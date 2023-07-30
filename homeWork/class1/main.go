@@ -2,6 +2,7 @@ package main
 
 import "fmt"
 
+// 切片作业
 func main() {
 	var sliceInt = []int{1, 2, 3, 4, 5, 6}
 	//将3删除
@@ -13,7 +14,7 @@ func main() {
 	fmt.Printf("结果[%v],缩容后的sliceInt1 cap[%v]\n", sliceInt1, cap(sliceInt))
 }
 
-// 传入要删除的下标，返回一个切片
+// 传• 要求一：能够实现删除操作就可以。
 func deleteSlice(index int, sliceInt []int) []int {
 	if index < len(sliceInt) {
 		firstSlice := sliceInt[0:index] //首
@@ -26,7 +27,7 @@ func deleteSlice(index int, sliceInt []int) []int {
 	return sliceInt
 }
 
-// 使用泛型优化后的版本
+// 使用泛型优化后的版本,考虑使用比较高性能的实现。
 func deleteSliceAny[T any](index int, sliceInt []T) []T {
 	if index < len(sliceInt) || index < 0 {
 		//直接修改原来的切片
@@ -47,7 +48,7 @@ func appendSlice[T any](index int, value T, sliceAny []T) []T {
 	return append(sliceAny, value)
 }
 
-// 缩容
+// 缩容支持缩容，并且设计缩容机制
 func deleteAndShrink[T any](index int, slice []T) []T {
 	if index < 0 || index >= len(slice) {
 		return slice
