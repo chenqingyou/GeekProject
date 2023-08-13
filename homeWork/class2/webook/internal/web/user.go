@@ -8,6 +8,8 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"time"
+	"unicode/utf8"
 )
 
 const (
@@ -137,15 +139,81 @@ func (u *UserHandler) Longin(ctx *gin.Context) {
 	//这里登录成功了
 	sess := sessions.Default(ctx)
 	//放在sess里的值
-	sess.Set("userId", uLoginMeg.Id)
+	sess.Set(userIdKey, uLoginMeg.Id)
 	//设置之后需要刷新
 	sess.Save()
 	ctx.String(http.StatusOK, "Login successful\n")
 	return
 }
-func (u *UserHandler) Edit(ctx *gin.Context) {
 
+/*
+允许用户补充基本个人信息，包括：
+昵称：字符串，你需要考虑允许的长度。
+生日：前端输入为 1992-01-01 这种字符串。
+个人简介：一段文本，你需要考虑允许的长度。
+尝试校验这些输入，并且返回准确的信息。
+修改 /users/profile 接口，确保这些信息也能输出到前端。*/
+
+func (u *UserHandler) Edit(ctx *gin.Context) {
+	type EditReq struct {
+		Nickname        string `json:"nickname"`
+		Birthday        string `json:"birthday"`
+		PersonalProfile string `json:"personalProfile"`
+	}
+	sess := sessions.Default(ctx)
+	id := sess.Get(userIdKey).(int64)
+	var req EditReq
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+	//校验字符串长度
+	if utf8.RuneCountInString(req.Nickname) > 10 {
+		ctx.String(http.StatusOK, "The nickname length cannot exceed 10\n ")
+		return
+	}
+	//校验字符串长度
+	if utf8.RuneCountInString(req.PersonalProfile) > 300 {
+		ctx.String(http.StatusOK, "The personalProfile length cannot exceed 300\n ")
+		return
+	}
+	// 使用 time 包中的 Parse 函数解析日期字符串
+	_, err := time.Parse("2006-01-02", req.Birthday)
+	if err != nil {
+		ctx.String(http.StatusOK, "Birthday is formatted incorrectly, for example:2006-01-02\n ")
+		return
+	}
+	//调用服务层的登录接口
+	err = u.svc.Edit(ctx, domain.UserDomain{
+		Id:              id,
+		Nickname:        req.Nickname,
+		Birthday:        req.Birthday,
+		PersonalProfile: req.PersonalProfile,
+	})
+	if err == service.ErrInvalidUserOrPassword {
+		ctx.String(http.StatusOK, "Mailbox does not exist \n")
+		return
+	}
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, "System error")
+		return
+	}
+	ctx.String(http.StatusOK, "edit successfully\n ")
 }
 func (u *UserHandler) Profile(ctx *gin.Context) {
-	ctx.String(http.StatusOK, "这是你的 Profile ")
+	type EditReq struct {
+		Email string `json:"email"`
+	}
+	sess := sessions.Default(ctx)
+	id := sess.Get(userIdKey).(int64)
+	var req EditReq
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+	//调用服务层的登录接口
+	UserDetail, err := u.svc.Profile(ctx, id)
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, "System error")
+		return
+	}
+	ctx.String(http.StatusOK, fmt.Sprintf("%v", UserDetail))
 }

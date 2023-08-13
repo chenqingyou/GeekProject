@@ -28,6 +28,12 @@ func (ud *UserDao) FindByEmail(cxt context.Context, email string) (UserDB, error
 	//err := ud.db.WithContext(cxt).Where("email = ?", userDB.Email).First(&userDBEmail).Error
 	return userDBEmail, err
 }
+func (ud *UserDao) FindById(cxt context.Context, Id int64) (UserDB, error) {
+	var userDBEmail UserDB
+	err := ud.db.WithContext(cxt).First(&userDBEmail, "id = ?", Id).Error
+	//err := ud.db.WithContext(cxt).Where("email = ?", userDB.Email).First(&userDBEmail).Error
+	return userDBEmail, err
+}
 
 func (ud *UserDao) InsertUser(cxt context.Context, userDB UserDB) error {
 	nowTime := time.Now().UnixMilli()
@@ -45,12 +51,29 @@ func (ud *UserDao) InsertUser(cxt context.Context, userDB UserDB) error {
 	return err
 }
 
+func (ud *UserDao) EditUser(cxt context.Context, userDB UserDB) error {
+	nowTime := time.Now().UnixMilli()
+	//写入数据库
+	err := ud.db.WithContext(cxt).Where("id = ?", userDB.Id).Updates(&UserDB{
+		Email:           userDB.Email,
+		Password:        userDB.Password,
+		Nickname:        userDB.Nickname,
+		Birthday:        userDB.Birthday,
+		PersonalProfile: userDB.PersonalProfile,
+		UpdateTime:      nowTime,
+	}).Error
+	return err
+}
+
 // UserDB 直接对应数据库中的表结构
 type UserDB struct {
 	Id int64 `gorm:"primaryKey,autoIncrement"`
 	// 设置为唯一索引
-	Email    string `gorm:"unique"`
-	Password string
+	Email           string `gorm:"unique"`
+	Password        string
+	Nickname        string
+	Birthday        string
+	PersonalProfile string
 	//Phone *string
 	Phone      sql.NullString `gorm:"unique"`
 	CreatTime  int64

@@ -27,7 +27,7 @@ func (lmb *LoginMiddlewareBuilder) BuildSess() gin.HandlerFunc {
 		}
 		//使用session
 		sess := sessions.Default(ctx)
-		id := sess.Get("userID")
+		id := sess.Get("userId")
 		if id == nil {
 			//没有登录
 			ctx.AbortWithStatus(http.StatusUnauthorized)

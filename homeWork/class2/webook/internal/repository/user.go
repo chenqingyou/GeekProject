@@ -41,3 +41,40 @@ func (ur *UserRepository) FindByEmail(cxt context.Context, email string) (domain
 		Password: byEmail.Password,
 	}, err
 }
+
+// EditUser 创建用户
+func (ur *UserRepository) EditUser(cxt context.Context, domianU domain.UserDomain) error {
+	return ur.daoUserDB.EditUser(cxt, dao.UserDB{
+		Id:              domianU.Id,
+		Email:           domianU.Email,
+		Password:        domianU.Password,
+		Nickname:        domianU.Nickname,
+		Birthday:        domianU.Birthday,
+		PersonalProfile: domianU.PersonalProfile,
+	})
+}
+
+// EditUser 创建用户
+func (ur *UserRepository) ProfileUser(cxt context.Context, domianU domain.UserDomain) error {
+	return ur.daoUserDB.EditUser(cxt, dao.UserDB{
+		Id:              domianU.Id,
+		Email:           domianU.Email,
+		Password:        domianU.Password,
+		Nickname:        domianU.Nickname,
+		Birthday:        domianU.Birthday,
+		PersonalProfile: domianU.PersonalProfile,
+	})
+}
+
+func (ur *UserRepository) FindById(ctx context.Context, id int64) (domain.UserDomain, error) {
+	ud, err := ur.daoUserDB.FindById(ctx, id)
+	if err != nil {
+		return domain.UserDomain{}, err
+	}
+	return domain.UserDomain{
+		Email:           ud.Email,
+		Nickname:        ud.Nickname,
+		Birthday:        ud.Birthday,
+		PersonalProfile: ud.PersonalProfile,
+	}, nil
+}
