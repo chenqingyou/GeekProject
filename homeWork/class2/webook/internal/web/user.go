@@ -3,6 +3,7 @@ package web
 import (
 	"GeekProject/homeWork/class2/webook/internal/domain"
 	"GeekProject/homeWork/class2/webook/internal/service"
+	"encoding/json"
 	"fmt"
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
@@ -210,10 +211,15 @@ func (u *UserHandler) Profile(ctx *gin.Context) {
 		return
 	}
 	//调用服务层的登录接口
-	UserDetail, err := u.svc.Profile(ctx, id)
+	userDetail, err := u.svc.Profile(ctx, id)
 	if err != nil {
 		ctx.String(http.StatusInternalServerError, "System error")
 		return
 	}
-	ctx.String(http.StatusOK, fmt.Sprintf("%v", UserDetail))
+	//需要将返回值反解码
+	userDetailMarshal, err := json.Marshal(userDetail)
+	if err != nil {
+		return
+	}
+	ctx.String(http.StatusOK, string(userDetailMarshal))
 }
