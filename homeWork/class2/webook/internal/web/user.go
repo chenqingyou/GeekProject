@@ -3,11 +3,14 @@ package web
 import (
 	"GeekProject/homeWork/class2/webook/internal/domain"
 	"GeekProject/homeWork/class2/webook/internal/service"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	regexp "github.com/dlclark/regexp2"
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"net/http"
 	"time"
 	"unicode/utf8"
@@ -138,11 +141,27 @@ func (u *UserHandler) Longin(ctx *gin.Context) {
 		return
 	}
 	//这里登录成功了
-	sess := sessions.Default(ctx)
-	//放在sess里的值
-	sess.Set(userIdKey, uLoginMeg.Id)
-	//设置之后需要刷新
-	sess.Save()
+	//sess := sessions.Default(ctx)
+	////放在sess里的值
+	//sess.Set(userIdKey, uLoginMeg.Id)
+	////设置之后需要刷新
+	//sess.Save()
+
+	//使用jwt
+	privateKey, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader) //密钥
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"info": fmt.Sprintf("err [%v]", err)})
+		return
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodES512, UserClaims{
+		RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute))},
+		ID:               uLoginMeg.Id,
+	})
+	signedString, err := token.SignedString(privateKey)
+	if err != nil {
+		return
+	}
+	ctx.Header("x-jwt-tokn", signedString)
 	ctx.String(http.StatusOK, "Login successful\n")
 	return
 }
@@ -161,8 +180,17 @@ func (u *UserHandler) Edit(ctx *gin.Context) {
 		Birthday        string `json:"birthday"`
 		PersonalProfile string `json:"personalProfile"`
 	}
-	sess := sessions.Default(ctx)
-	id := sess.Get(userIdKey).(int64)
+	//sess := sessions.Default(ctx)
+	//id := sess.Get(userIdKey).(int64)
+	//使用jwt
+	c, _ := ctx.Get("claims")
+	claims, ok := c.(*UserClaims)
+	if !ok {
+		ctx.String(http.StatusInternalServerError, "System error")
+		return
+	}
+	fmt.Printf("claims[%v]\n", claims)
+
 	var req EditReq
 	if err := ctx.Bind(&req); err != nil {
 		return
@@ -185,7 +213,7 @@ func (u *UserHandler) Edit(ctx *gin.Context) {
 	}
 	//调用服务层的登录接口
 	err = u.svc.Edit(ctx, domain.UserDomain{
-		Id:              id,
+		Id:              claims.ID,
 		Nickname:        req.Nickname,
 		Birthday:        req.Birthday,
 		PersonalProfile: req.PersonalProfile,
@@ -204,14 +232,19 @@ func (u *UserHandler) Profile(ctx *gin.Context) {
 	type EditReq struct {
 		Email string `json:"email"`
 	}
-	sess := sessions.Default(ctx)
-	id := sess.Get(userIdKey).(int64)
+	c, _ := ctx.Get("claims")
+	claims, ok := c.(*UserClaims)
+	if !ok {
+		ctx.String(http.StatusInternalServerError, "System error")
+		return
+	}
+	fmt.Printf("claims[%v]\n", claims)
 	var req EditReq
 	if err := ctx.Bind(&req); err != nil {
 		return
 	}
 	//调用服务层的登录接口
-	userDetail, err := u.svc.Profile(ctx, id)
+	userDetail, err := u.svc.Profile(ctx, claims.ID)
 	if err != nil {
 		ctx.String(http.StatusInternalServerError, "System error")
 		return
@@ -222,4 +255,10 @@ func (u *UserHandler) Profile(ctx *gin.Context) {
 		return
 	}
 	ctx.String(http.StatusOK, string(userDetailMarshal))
+}
+
+type UserClaims struct {
+	jwt.RegisteredClaims
+	ID        int64
+	UserAgent string
 }

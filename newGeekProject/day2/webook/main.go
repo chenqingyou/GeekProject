@@ -1,16 +1,19 @@
 package main
 
 import (
+	"GeekProject/newGeekProject/day2/webook/config"
 	"GeekProject/newGeekProject/day2/webook/internal/repository"
 	"GeekProject/newGeekProject/day2/webook/internal/repository/dao"
 	"GeekProject/newGeekProject/day2/webook/internal/service"
 	"GeekProject/newGeekProject/day2/webook/internal/web"
 	"GeekProject/newGeekProject/day2/webook/internal/web/middleware"
+	"GeekProject/newGeekProject/day2/webook/pkg/ginx/middlewares/ratelimit"
 	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/cookie"
+	"github.com/gin-contrib/sessions/memstore"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"strings"
@@ -18,7 +21,7 @@ import (
 )
 
 func main() {
-	serverDB, err := initDB("root:root@tcp(localhost:13316)/webook")
+	serverDB, err := initDB(config.Config.DB.DNS)
 	if err != nil {
 		fmt.Printf("Open DB init err [%v]\n", err)
 		return
@@ -30,11 +33,21 @@ func main() {
 	//user.RegisterRoutesV1(server.Group("/users"))
 	//方式2:定义好分组
 	user.RegisterRoutesCt(server)
-	server.Run(":8080")
+	//server := gin.Default()
+	//server.GET("/hello", func(ctx *gin.Context) {
+	//	ctx.JSON(http.StatusOK, "你好 你来了")
+	//})
+	server.Run(":8081")
 }
 
 func initServer() *gin.Engine {
 	server := gin.Default()
+	//使用限流的中间件
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: config.Config.Redis.Addr,
+	})
+	server.Use(ratelimit.NewBuilder(redisClient, time.Second, 100).Build())
+
 	//注册接口
 	//解决跨域问题
 	/*
@@ -50,6 +63,8 @@ func initServer() *gin.Engine {
 		//AllowOrigins: []string{"http://localhost:3000"},
 		//AllowMethods:     []string{"PUT", "PATCH", "POST"},
 		AllowHeaders: []string{"Authorization", "Content-Type"},
+		//token获取
+		ExposeHeaders: []string{"x-jwt-token"},
 		//是否允许你带cookie之类的东西
 		AllowCredentials: true,
 		AllowOriginFunc: func(origin string) bool {
@@ -61,9 +76,30 @@ func initServer() *gin.Engine {
 		},
 		MaxAge: 12 * time.Hour,
 	}))
-	store := cookie.NewStore([]byte("secret"))
+	//使用cookie存放sess
+	//store := cookie.NewStore([]byte("secret"))
+	//使用内存存放
+	store := memstore.NewStore([]byte("WZmKWNA1rxZf9TCoRBNsNDIlKdHb6DrzwK2NFF9n7a8ueRfinsAWFqVskMalYtgo"),
+		[]byte("lUzWwJAb6zaC1C5lRELHwDRNiYRwIC3nhL80dzBffEy7EsRGnzuOSa8BkqooCZ6W"))
+	//使用redis存放--多实例适合
+	//store, err := redis.NewStore(16, "tcp", "localhost:6379", "",
+	//	[]byte("nCbJB9lqD8O1WSVnCaSZweak"),
+	//	[]byte("nCbJB9lqD8O1WSVnCaSZweak"))
+	//if err != nil {
+	//	panic(err)
+	//}
 	server.Use(sessions.Sessions("mysession", store))
-	server.Use(middleware.NewLoginMiddlewareBuilder().DepositPaths("/users/signup").DepositPaths("/users/login").BuildSess())
+	//size 16 代表最大空闲链接
+	//使用自己定义的store
+	//mystore := &sqlx_store.Store{}
+	//server.Use(sessions.Sessions("mysession", mystore))
+
+	//server.Use(middleware.NewLoginMiddlewareBuilder().DepositPaths(
+	//	"/users/signup").DepositPaths("/users/login").BuildSess())
+
+	//使用jwt模式登录
+	server.Use(middleware.NewLoginJWTMiddlewareBuilder().DepositPaths(
+		"/users/signup").DepositPaths("/users/loginJwt").BuildSess())
 
 	return server
 }

@@ -55,7 +55,6 @@ func (us *UserService) Login(cxt context.Context, domainU domain.UserDomain) (do
 }
 
 func (us *UserService) Edit(cxt context.Context, domainU domain.UserDomain) error {
-	//先查找这个用户是否存在
 	err := us.repo.EditUser(cxt, domainU)
 	if err != nil {
 		return err
