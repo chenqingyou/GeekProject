@@ -1,6 +1,7 @@
 package main
 
 import (
+	"GeekProject/homeWork/class2/webook/config"
 	"GeekProject/homeWork/class2/webook/internal/repository"
 	"GeekProject/homeWork/class2/webook/internal/repository/dao"
 	"GeekProject/homeWork/class2/webook/internal/service"
@@ -18,7 +19,7 @@ import (
 )
 
 func main() {
-	serverDB, err := initDB("root:root@tcp(localhost:13316)/webook")
+	serverDB, err := initDB(config.Config.DB.DNS)
 	if err != nil {
 		fmt.Printf("Open DB init err [%v]\n", err)
 		return
