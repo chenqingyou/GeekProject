@@ -20,11 +20,16 @@ var luaSetCode string
 //go:embed lua/verify_code.lua
 var luaVerifyCode string
 
+type CodeCache interface {
+	Set(ctx context.Context, biz, phone, code string) error
+	Verify(ctx context.Context, biz, phone, inputCode string) (bool, error)
+}
+
 type RedisCodeCache struct {
 	client redis.Cmdable
 }
 
-func NewCodeCache(client redis.Cmdable) *RedisCodeCache {
+func NewCodeCache(client redis.Cmdable) CodeCache {
 	return &RedisCodeCache{
 		client: client,
 	}

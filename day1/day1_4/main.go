@@ -22,7 +22,7 @@ func main() {
 	//初始化数据库以业务
 	webserver := initWebServer(serverDB)
 	//初始化路由
-	webserver.RegisterRoutes(server)
+
 	server.Run(":8080")
 }
 

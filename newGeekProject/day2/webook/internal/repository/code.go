@@ -10,11 +10,16 @@ var (
 	ErrVerifyCodeFrequently = cache.ErrVerifyCodeFrequently
 )
 
-type CodeRepository struct {
-	cache *cache.RedisCodeCache
+type CodeRepositoryInterface interface {
+	Store(ctx context.Context, biz, phone, code string) error
+	Verify(ctx context.Context, biz, phone, code string) (bool, error)
 }
 
-func NewCodeRepository(cache *cache.RedisCodeCache) *CodeRepository {
+type CodeRepository struct {
+	cache cache.CodeCache
+}
+
+func NewCodeRepository(cache cache.CodeCache) CodeRepositoryInterface {
 	return &CodeRepository{cache: cache}
 }
 

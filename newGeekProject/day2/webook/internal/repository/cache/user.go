@@ -11,6 +11,11 @@ import (
 
 var ErrUserNotNoFound = redis.Nil
 
+type UserCache interface {
+	Get(ctx context.Context, id int64) (domain.UserDomain, error)
+	Set(ctx context.Context, doU domain.UserDomain) error
+}
+
 type UserRedisCache struct {
 	//单机和集群都可以
 	client     redis.Cmdable
@@ -20,7 +25,7 @@ type UserRedisCache struct {
 // NewUserCache A用到B ，B一定是接口 ==>保证面向接口
 // A用到B ，B一定是A的字段==>规避包变量
 // A用到B ，A绝对不初始化，一定是外面注入
-func NewUserCache(client redis.Cmdable) *UserRedisCache {
+func NewUserCache(client redis.Cmdable) UserCache {
 	return &UserRedisCache{
 		client:     client,
 		expiration: 15 * time.Minute,

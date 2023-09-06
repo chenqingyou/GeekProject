@@ -10,17 +10,25 @@ import (
 )
 
 type UserRepository struct {
-	daoUserDB *dao.UserDao
-	cache     *cache.UserRedisCache
+	daoUserDB dao.UserDaoInterface
+	cache     cache.UserCache
+}
+
+type UserRepositoryInterface interface {
+	CreateUser(cxt context.Context, domianU domain.UserDomain) error
+	FindByEmail(cxt context.Context, email string) (domain.UserDomain, error)
+	FindByPhone(cxt context.Context, phone string) (domain.UserDomain, error)
+	EditUser(cxt context.Context, domianU domain.UserDomain) error
+	FindById(ctx context.Context, id int64) (domain.UserDomain, error)
 }
 
 var (
-	ErrUserDuplicateEmail = dao.ErrUserDuplicateEmail
+	ErrUserDuplicateEmail = dao.ErrUserDuplicate
 	ErrUserNotFound       = dao.ErrUserNotFound
 )
 
 // NewUserRepository 不想直接暴露结构体
-func NewUserRepository(db *dao.UserDao, cache *cache.UserRedisCache) *UserRepository {
+func NewUserRepository(db dao.UserDaoInterface, cache cache.UserCache) UserRepositoryInterface {
 	return &UserRepository{
 		daoUserDB: db,
 		cache:     cache,

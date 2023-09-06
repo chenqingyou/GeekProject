@@ -24,14 +24,17 @@ const (
 	bizLogin             = "login"
 )
 
+// 确保UserHandler实现了handler接口
+var _ Handler = (*UserHandler)(nil)
+
 type UserHandler struct {
-	svc         *service.UserService
+	svc         service.UserServiceInterface
 	passWordExp *regexp.Regexp
 	emailExp    *regexp.Regexp
-	codeSvc     *service.CodeService
+	codeSvc     service.CodeServiceInterface
 }
 
-func NewUserHandler(svc *service.UserService, codeSvc *service.CodeService) *UserHandler {
+func NewUserHandler(svc service.UserServiceInterface, codeSvc service.CodeServiceInterface) *UserHandler {
 	return &UserHandler{
 		svc:         svc,
 		codeSvc:     codeSvc,

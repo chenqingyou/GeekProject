@@ -10,8 +10,14 @@ import (
 
 const codeTplId = "1937434"
 
+type CodeServiceInterface interface {
+	Send(ctx context.Context, biz string, phone string) error
+	Verify(ctx context.Context, biz, phone, inputCode string) (bool, error)
+	GenerateVerificationCode() string
+}
+
 type CodeService struct {
-	codeRep *repository.CodeRepository
+	codeRep repository.CodeRepositoryInterface
 	smsSvr  sms.ServiceSmsInterface
 }
 
@@ -20,7 +26,7 @@ var (
 	ErrVerifyCodeFrequently = repository.ErrVerifyCodeFrequently
 )
 
-func NewCodeService(codeRep *repository.CodeRepository, smsSvr sms.ServiceSmsInterface) *CodeService {
+func NewCodeService(codeRep repository.CodeRepositoryInterface, smsSvr sms.ServiceSmsInterface) CodeServiceInterface {
 	return &CodeService{
 		codeRep: codeRep,
 		smsSvr:  smsSvr,

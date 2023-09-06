@@ -14,11 +14,19 @@ type UserDao struct {
 }
 
 var (
-	ErrUserDuplicateEmail = errors.New("邮箱冲突")
-	ErrUserNotFound       = gorm.ErrRecordNotFound //框架里自动使用
+	ErrUserDuplicate = errors.New("邮箱or手机号码冲突")
+	ErrUserNotFound  = gorm.ErrRecordNotFound //框架里自动使用
 )
 
-func NewUserDao(db *gorm.DB) *UserDao {
+type UserDaoInterface interface {
+	FindById(cxt context.Context, Id int64) (UserDB, error)
+	FindByEmail(cxt context.Context, email string) (UserDB, error)
+	FindByPhone(cxt context.Context, phone string) (UserDB, error)
+	InsertUser(cxt context.Context, userDB UserDB) error
+	EditUser(cxt context.Context, userDB UserDB) error
+}
+
+func NewUserDao(db *gorm.DB) UserDaoInterface {
 	return &UserDao{db: db}
 }
 
@@ -52,7 +60,7 @@ func (ud *UserDao) InsertUser(cxt context.Context, userDB UserDB) error {
 		const uniqueConflictsErrNo uint16 = 1062
 		//判断是否是唯一
 		if mysqlErr.Number == uniqueConflictsErrNo {
-			return ErrUserDuplicateEmail
+			return ErrUserDuplicate
 		}
 	}
 	return err

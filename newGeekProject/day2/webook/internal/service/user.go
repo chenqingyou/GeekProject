@@ -13,13 +13,20 @@ var (
 	ErrInvalidUserOrPassword = errors.New("账号/密码错误")
 )
 
+type UserServiceInterface interface {
+	SignUp(ctx context.Context, domainU domain.UserDomain) error
+	Login(ctx context.Context, domainU domain.UserDomain) (domain.UserDomain, error)
+	Profile(ctx context.Context, id int64) (domain.UserDomain, error)
+	FindOrCreate(ctx context.Context, phone string) (domain.UserDomain, error)
+}
+
 // UserService 服务端，调用repository
 type UserService struct {
-	repo *repository.UserRepository
+	repo repository.UserRepositoryInterface
 }
 
 // NewUserService 不想直接暴露结构体
-func NewUserService(rep *repository.UserRepository) *UserService {
+func NewUserService(rep repository.UserRepositoryInterface) UserServiceInterface {
 	return &UserService{
 		repo: rep,
 	}
