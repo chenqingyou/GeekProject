@@ -20,22 +20,13 @@ const (
 	bizLogin             = "login"
 )
 
-// UserHandlerInterface 改造成接口
-type UserHandlerInterface interface {
-	SignUp(ctx *gin.Context)
-	Login(ctx *gin.Context)
-	Edit(ctx *gin.Context)
-	Profile(ctx *gin.Context)
-	// 添加其他方法...
-}
-
 type UserWebHandler struct {
 	srv         *service.UserService
 	passWordExp *regexp.Regexp
 	emailExp    *regexp.Regexp
 }
 
-func NewUserWebHandler(svc *service.UserService) UserHandlerInterface {
+func NewUserWebHandler(svc *service.UserService) *UserWebHandler {
 	return &UserWebHandler{
 		srv:         svc,
 		passWordExp: regexp.MustCompile(passwordRegexPattern, regexp.None),

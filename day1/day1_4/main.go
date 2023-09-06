@@ -22,7 +22,7 @@ func main() {
 	//初始化数据库以业务
 	webserver := initWebServer(serverDB)
 	//初始化路由
-
+	webserver.RegisterRoutes(server)
 	server.Run(":8080")
 }
 
@@ -36,7 +36,7 @@ func initServer() *gin.Engine {
 	return server
 }
 
-func initWebServer(db *gorm.DB) web.UserHandlerInterface {
+func initWebServer(db *gorm.DB) *web.UserWebHandler {
 	ud := dao.NewUserDao(db)
 	ur := repository.NewUserRep(ud)
 	us := service.NewUserService(ur)

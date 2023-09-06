@@ -24,8 +24,6 @@ const (
 	bizLogin             = "login"
 )
 
-var _ handler = (*UserHandler)(nil)
-
 type UserHandler struct {
 	svc         *service.UserService
 	passWordExp *regexp.Regexp
