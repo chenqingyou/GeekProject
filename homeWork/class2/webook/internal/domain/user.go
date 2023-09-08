@@ -12,3 +12,9 @@ type UserDomain struct {
 	PersonalProfile string    `json:"personalProfile,omitempty"`
 	Ctime           time.Time `json:"ctime,omitempty"`
 }
+
+type Result struct {
+	Code int64  `json:"code"`
+	Msg  string `json:"msg"`
+	Data any    `json:"data"`
+}

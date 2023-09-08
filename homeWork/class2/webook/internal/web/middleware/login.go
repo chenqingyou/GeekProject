@@ -28,8 +28,6 @@ func (lmb *LoginMiddlewareBuilder) BuildSess() gin.HandlerFunc {
 				return
 			}
 		}
-		//使用session
-		//设置jwt
 		//现在用jwt来校验
 		tokenStr := ctx.GetHeader("Authorization")
 		if tokenStr == "" {

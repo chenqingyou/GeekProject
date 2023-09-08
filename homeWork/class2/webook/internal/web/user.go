@@ -3,14 +3,11 @@ package web
 import (
 	"GeekProject/homeWork/class2/webook/internal/domain"
 	"GeekProject/homeWork/class2/webook/internal/service"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
-	"encoding/json"
 	"fmt"
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"log"
 	"net/http"
 	"time"
 	"unicode/utf8"
@@ -39,16 +36,16 @@ func NewUserHandler(svc *service.UserService) *UserHandler {
 }
 
 // RegisterRoutesV1 使用传入分组的方式使用路由
-func (u *UserHandler) RegisterRoutesV1(ug *gin.RouterGroup) {
-	//注册
-	ug.POST("/signup", u.SignUp)
-	//登录
-	ug.POST("/login", u.Longin)
-	//修改
-	ug.POST("/edit", u.Edit)
-	//查询
-	ug.POST("/profile", u.Profile)
-}
+//func (u *UserHandler) RegisterRoutesV1(ug *gin.RouterGroup) {
+//	//注册
+//	ug.POST("/signup", u.SignUp)
+//	//登录
+//	ug.POST("/login", u.Longin)
+//	//修改
+//	ug.POST("/edit", u.Edit)
+//	//查询
+//	ug.POST("/profile", u.Profile)
+//}
 
 func (u *UserHandler) RegisterRoutesCt(server *gin.Engine) {
 	//可以使用分组注册路由的方法
@@ -78,25 +75,45 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 	//校验邮箱
 	emailExpOk, err := u.emailExp.MatchString(req.Email)
 	if err != nil {
-		ctx.String(http.StatusInternalServerError, "System error\n ")
+		ctx.JSON(http.StatusInternalServerError, domain.Result{
+			Code: 5,
+			Msg:  "System error",
+			Data: nil,
+		})
 		return
 	}
 	if !emailExpOk {
-		ctx.String(http.StatusOK, "The registered email address format is incorrect\n ")
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 0,
+			Msg:  "The registered email address format is incorrect",
+			Data: nil,
+		})
 		return
 	}
 	//校验密码
 	passWordExpOk, err := u.passWordExp.MatchString(req.Password)
 	if err != nil {
-		ctx.String(http.StatusInternalServerError, "System error\n ")
+		ctx.JSON(http.StatusInternalServerError, domain.Result{
+			Code: 0,
+			Msg:  "System error",
+			Data: nil,
+		})
 		return
 	}
 	if !passWordExpOk {
-		ctx.String(http.StatusOK, "The password must be larger than 8 characters and contain special characters\n ")
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 0,
+			Msg:  "The password must be larger than 8 characters and contain special characters",
+			Data: nil,
+		})
 		return
 	}
 	if req.ConfirmPassword != req.Password {
-		ctx.String(http.StatusOK, "The two passwords are different\n  ")
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 0,
+			Msg:  "The two passwords are different",
+			Data: nil,
+		})
 		return
 	}
 
@@ -107,14 +124,26 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 		Password: req.Password,
 	})
 	if err == service.ErrUserDuplicateEmail {
-		ctx.String(http.StatusOK, "Mailbox conflict")
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 0,
+			Msg:  "Mailbox conflict",
+			Data: nil,
+		})
 		return
 	}
 	if err != nil {
-		ctx.String(http.StatusInternalServerError, "System error")
+		ctx.JSON(http.StatusInternalServerError, domain.Result{
+			Code: 0,
+			Msg:  "System error",
+			Data: nil,
+		})
 		return
 	}
-	ctx.String(http.StatusOK, "Registered successfully\n ")
+	ctx.JSON(http.StatusOK, domain.Result{
+		Code: 0,
+		Msg:  "Registered successfully",
+		Data: nil,
+	})
 }
 
 func (u *UserHandler) Longin(ctx *gin.Context) {
@@ -122,7 +151,6 @@ func (u *UserHandler) Longin(ctx *gin.Context) {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
-
 	var req SignUpReq
 	if err := ctx.Bind(&req); err != nil {
 		return
@@ -133,36 +161,54 @@ func (u *UserHandler) Longin(ctx *gin.Context) {
 		Password: req.Password,
 	})
 	if err == service.ErrInvalidUserOrPassword {
-		ctx.String(http.StatusOK, "The account or password is incorrect\n \n")
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 0,
+			Msg:  "The account or password is incorrect",
+			Data: nil,
+		})
 		return
 	}
 	if err != nil {
-		ctx.String(http.StatusInternalServerError, "System error")
+		ctx.JSON(http.StatusInternalServerError, domain.Result{
+			Code: 5,
+			Msg:  "System error",
+			Data: nil,
+		})
 		return
 	}
-	//这里登录成功了
-	//sess := sessions.Default(ctx)
-	////放在sess里的值
-	//sess.Set(userIdKey, uLoginMeg.Id)
-	////设置之后需要刷新
-	//sess.Save()
 
 	//使用jwt
-	privateKey, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader) //密钥
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"info": fmt.Sprintf("err [%v]", err)})
-		return
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodES512, UserClaims{
+	//privateKey, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader) //密钥
+	//if err != nil {
+	//	ctx.JSON(http.StatusInternalServerError, domain.Result{
+	//		Code: 0,
+	//		Msg:  " fmt.Sprintf(\"err [%v]\", err)",
+	//		Data: nil,
+	//	})
+	//	return
+	//}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, UserClaims{
 		RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute))},
 		ID:               uLoginMeg.Id,
+		UserAgent:        ctx.Request.UserAgent(),
 	})
-	signedString, err := token.SignedString(privateKey)
+	signedString, err := token.SignedString([]byte("95osj3fUD7fo0mlYdDbncXz4VD2igvf0"))
 	if err != nil {
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 5,
+			Msg:  "SignedString err",
+			Data: nil,
+		})
 		return
 	}
+	log.Printf("x-jwt-tokn[%v]\n", signedString)
 	ctx.Header("x-jwt-tokn", signedString)
-	ctx.String(http.StatusOK, "Login successful\n")
+	ctx.Header("x-jwt-tokn", signedString)
+	ctx.JSON(http.StatusOK, domain.Result{
+		Code: 0,
+		Msg:  "Login successful",
+		Data: nil,
+	})
 	return
 }
 
@@ -186,7 +232,11 @@ func (u *UserHandler) Edit(ctx *gin.Context) {
 	c, _ := ctx.Get("claims")
 	claims, ok := c.(*UserClaims)
 	if !ok {
-		ctx.String(http.StatusInternalServerError, "System error")
+		ctx.JSON(http.StatusInternalServerError, domain.Result{
+			Code: 5,
+			Msg:  "System error",
+			Data: nil,
+		})
 		return
 	}
 	fmt.Printf("claims[%v]\n", claims)
@@ -197,18 +247,30 @@ func (u *UserHandler) Edit(ctx *gin.Context) {
 	}
 	//校验字符串长度
 	if utf8.RuneCountInString(req.Nickname) > 10 {
-		ctx.String(http.StatusOK, "The nickname length cannot exceed 10\n ")
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 0,
+			Msg:  "The nickname length cannot exceed 10",
+			Data: nil,
+		})
 		return
 	}
 	//校验字符串长度
 	if utf8.RuneCountInString(req.PersonalProfile) > 300 {
-		ctx.String(http.StatusOK, "The personalProfile length cannot exceed 300\n ")
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 0,
+			Msg:  "The personalProfile length cannot exceed 300",
+			Data: nil,
+		})
 		return
 	}
 	// 使用 time 包中的 Parse 函数解析日期字符串
 	_, err := time.Parse("2006-01-02", req.Birthday)
 	if err != nil {
-		ctx.String(http.StatusOK, "Birthday is formatted incorrectly, for example:2006-01-02\n ")
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 0,
+			Msg:  "Birthday is formatted incorrectly, for example:2006-01-02",
+			Data: nil,
+		})
 		return
 	}
 	//调用服务层的登录接口
@@ -219,14 +281,27 @@ func (u *UserHandler) Edit(ctx *gin.Context) {
 		PersonalProfile: req.PersonalProfile,
 	})
 	if err == service.ErrInvalidUserOrPassword {
-		ctx.String(http.StatusOK, "Mailbox does not exist \n")
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 0,
+			Msg:  "Mailbox does not exist",
+			Data: nil,
+		})
 		return
 	}
 	if err != nil {
-		ctx.String(http.StatusInternalServerError, "System error")
+		ctx.JSON(http.StatusInternalServerError, domain.Result{
+			Code: 5,
+			Msg:  "System error",
+			Data: nil,
+		})
 		return
 	}
-	ctx.String(http.StatusOK, "edit successfully\n ")
+	//成功将数据缓存到本地
+	ctx.JSON(http.StatusOK, domain.Result{
+		Code: 0,
+		Msg:  "edit successfully",
+		Data: nil,
+	})
 }
 func (u *UserHandler) Profile(ctx *gin.Context) {
 	type EditReq struct {
@@ -235,7 +310,11 @@ func (u *UserHandler) Profile(ctx *gin.Context) {
 	c, _ := ctx.Get("claims")
 	claims, ok := c.(*UserClaims)
 	if !ok {
-		ctx.String(http.StatusInternalServerError, "System error")
+		ctx.JSON(http.StatusInternalServerError, domain.Result{
+			Code: 5,
+			Msg:  "System error",
+			Data: nil,
+		})
 		return
 	}
 	fmt.Printf("claims[%v]\n", claims)
@@ -246,15 +325,17 @@ func (u *UserHandler) Profile(ctx *gin.Context) {
 	//调用服务层的登录接口
 	userDetail, err := u.svc.Profile(ctx, claims.ID)
 	if err != nil {
-		ctx.String(http.StatusInternalServerError, "System error")
+		ctx.JSON(http.StatusInternalServerError, domain.Result{
+			Code: 5,
+			Msg:  "System error",
+			Data: nil,
+		})
 		return
 	}
-	//需要将返回值反解码
-	userDetailMarshal, err := json.Marshal(userDetail)
-	if err != nil {
-		return
-	}
-	ctx.String(http.StatusOK, string(userDetailMarshal))
+	ctx.JSON(http.StatusOK, domain.Result{
+		Msg:  "查询成功",
+		Data: userDetail,
+	})
 }
 
 type UserClaims struct {

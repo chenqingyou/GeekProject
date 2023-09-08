@@ -2,12 +2,14 @@ package repository
 
 import (
 	"GeekProject/homeWork/class2/webook/internal/domain"
+	"GeekProject/homeWork/class2/webook/internal/repository/cache"
 	"GeekProject/homeWork/class2/webook/internal/repository/dao"
 	"context"
 )
 
 type UserRepository struct {
-	daoUserDB *dao.UserDao
+	daoUserDB      *dao.UserDao
+	userLocalCache *cache.UserLocalCache
 }
 
 var (
@@ -16,9 +18,10 @@ var (
 )
 
 // NewUserRepository 不想直接暴露结构体
-func NewUserRepository(db *dao.UserDao) *UserRepository {
+func NewUserRepository(db *dao.UserDao, localCache *cache.UserLocalCache) *UserRepository {
 	return &UserRepository{
-		daoUserDB: db,
+		daoUserDB:      db,
+		userLocalCache: localCache,
 	}
 }
 
@@ -44,6 +47,11 @@ func (ur *UserRepository) FindByEmail(cxt context.Context, email string) (domain
 
 // EditUser 创建用户
 func (ur *UserRepository) EditUser(cxt context.Context, domianU domain.UserDomain) error {
+	//缓存数据到本地
+	err := ur.userLocalCache.Set(cxt, domianU)
+	if err != nil {
+		return err
+	}
 	return ur.daoUserDB.EditUser(cxt, dao.UserDB{
 		Id:              domianU.Id,
 		Email:           domianU.Email,
@@ -55,6 +63,11 @@ func (ur *UserRepository) EditUser(cxt context.Context, domianU domain.UserDomai
 }
 
 func (ur *UserRepository) FindById(ctx context.Context, id int64) (domain.UserDomain, error) {
+	//先去缓存里面找 找不到再去数据库里面查
+	getId, err := ur.userLocalCache.Get(ctx, id)
+	if err == nil {
+		return getId, nil
+	}
 	ud, err := ur.daoUserDB.FindById(ctx, id)
 	if err != nil {
 		return domain.UserDomain{}, err

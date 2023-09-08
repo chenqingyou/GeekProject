@@ -1,4 +1,4 @@
-package repository
+package cache
 
 import (
 	"sync"
@@ -12,8 +12,17 @@ var (
 	codeCountMap = make(map[string]int)
 	// 用于保证map操作的原子性
 	mu sync.Mutex
+
+	cache = sync.Map{}
 )
 
+type CacheItem struct {
+	Code       string
+	Cnt        int
+	Expiration time.Time
+}
+
+// 设置验证码
 func setCode(key, val string) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -29,6 +38,7 @@ func setCode(key, val string) {
 	}()
 }
 
+// 检查验证码
 func checkAndSetCode(key, val string) int {
 	mu.Lock()
 	defer mu.Unlock()
@@ -46,4 +56,31 @@ func checkAndSetCode(key, val string) int {
 	// key存在且未过期，但发送太频繁（在10分钟内）
 	// 返回-1表示发送太频繁
 	return -1
+}
+
+func checkCode(key, expectedCode string) int {
+	mu.Lock()
+	defer mu.Unlock()
+	value, ok := cache.Load(key)
+	if !ok {
+		return -1
+	}
+	item := value.(*CacheItem)
+	if item.Expiration.Before(time.Now()) {
+		// 已过期
+		cache.Delete(key)
+		return -1
+	}
+	if item.Cnt <= 0 {
+		// 无效的尝试或已使用
+		return -1
+	} else if expectedCode == item.Code {
+		// 代码匹配
+		item.Cnt = -1
+		return 0
+	} else {
+		// 代码不匹配
+		item.Cnt--
+		return -2
+	}
 }
