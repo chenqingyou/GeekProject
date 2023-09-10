@@ -124,7 +124,7 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 		ctx.String(http.StatusInternalServerError, "System error")
 		return
 	}
-	ctx.String(http.StatusOK, "Registered successfully\n ")
+	ctx.String(http.StatusOK, "Registered successfully")
 }
 
 func (u *UserHandler) Longin(ctx *gin.Context) {

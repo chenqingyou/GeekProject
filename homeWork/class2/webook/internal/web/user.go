@@ -305,7 +305,10 @@ func (u *UserHandler) Edit(ctx *gin.Context) {
 }
 func (u *UserHandler) Profile(ctx *gin.Context) {
 	type EditReq struct {
-		Email string `json:"email"`
+		Email           string `json:"email,omitempty"`
+		Nickname        string `json:"nickname,omitempty"`
+		Birthday        string `json:"birthday,omitempty"`
+		PersonalProfile string `json:"personalProfile,omitempty"`
 	}
 	c, _ := ctx.Get("claims")
 	claims, ok := c.(*UserClaims)
@@ -333,8 +336,13 @@ func (u *UserHandler) Profile(ctx *gin.Context) {
 		return
 	}
 	ctx.JSON(http.StatusOK, domain.Result{
-		Msg:  "查询成功",
-		Data: userDetail,
+		Msg: "查询成功",
+		Data: EditReq{
+			Email:           userDetail.Email,
+			Nickname:        userDetail.Nickname,
+			Birthday:        userDetail.Birthday,
+			PersonalProfile: userDetail.PersonalProfile,
+		}, //最好不要将领域对象直接暴露出去，需要重新定义一个结构体
 	})
 }
 
