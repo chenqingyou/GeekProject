@@ -9,6 +9,14 @@ import (
 	"time"
 )
 
+type UserDaoInterface interface {
+	FindByEmail(cxt context.Context, email string) (UserDB, error)
+	FindById(cxt context.Context, Id int64) (UserDB, error)
+	InsertUser(cxt context.Context, userDB UserDB) error
+	EditUser(cxt context.Context, userDB UserDB) error
+	FindByPhone(cxt context.Context, phone string) (UserDB, error)
+}
+
 type UserDao struct {
 	db *gorm.DB
 }
@@ -18,7 +26,7 @@ var (
 	ErrUserNotFound       = gorm.ErrRecordNotFound //框架里自动使用
 )
 
-func NewUserDao(db *gorm.DB) *UserDao {
+func NewUserDao(db *gorm.DB) UserDaoInterface {
 	return &UserDao{db: db}
 }
 
@@ -65,11 +73,18 @@ func (ud *UserDao) EditUser(cxt context.Context, userDB UserDB) error {
 	return err
 }
 
+func (ud *UserDao) FindByPhone(cxt context.Context, phone string) (UserDB, error) {
+	var userDBEmail UserDB
+	err := ud.db.WithContext(cxt).First(&userDBEmail, "phone = ?", phone).Error
+	//err := ud.db.WithContext(cxt).Where("email = ?", userDB.Email).First(&userDBEmail).Error
+	return userDBEmail, err
+}
+
 // UserDB 直接对应数据库中的表结构
 type UserDB struct {
 	Id int64 `gorm:"primaryKey,autoIncrement"`
 	// 设置为唯一索引
-	Email           string `gorm:"unique"`
+	Email           sql.NullString `gorm:"unique"`
 	Password        string
 	Nickname        string
 	Birthday        string

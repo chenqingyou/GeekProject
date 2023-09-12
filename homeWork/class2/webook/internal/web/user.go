@@ -22,30 +22,20 @@ const (
 )
 
 type UserHandler struct {
-	svc         *service.UserService
+	svc         service.UserServiceInterface
+	svcCode     service.CodeServiceInterface
 	passWordExp *regexp.Regexp
 	emailExp    *regexp.Regexp
 }
 
-func NewUserHandler(svc *service.UserService) *UserHandler {
+func NewUserHandler(svc service.UserServiceInterface, svcCode service.CodeServiceInterface) *UserHandler {
 	return &UserHandler{
 		svc:         svc,
+		svcCode:     svcCode,
 		passWordExp: regexp.MustCompile(passwordRegexPattern, regexp.None),
 		emailExp:    regexp.MustCompile(emailRegexPattern, regexp.None),
 	}
 }
-
-// RegisterRoutesV1 使用传入分组的方式使用路由
-//func (u *UserHandler) RegisterRoutesV1(ug *gin.RouterGroup) {
-//	//注册
-//	ug.POST("/signup", u.SignUp)
-//	//登录
-//	ug.POST("/login", u.Longin)
-//	//修改
-//	ug.POST("/edit", u.Edit)
-//	//查询
-//	ug.POST("/profile", u.Profile)
-//}
 
 func (u *UserHandler) RegisterRoutesCt(server *gin.Engine) {
 	//可以使用分组注册路由的方法
@@ -58,6 +48,7 @@ func (u *UserHandler) RegisterRoutesCt(server *gin.Engine) {
 	ug.POST("/edit", u.Edit)
 	//查询
 	ug.POST("/profile", u.Profile)
+	ug.POST("/loginSms/code", u.SendLoginSMSCode)
 }
 
 func (u *UserHandler) SignUp(ctx *gin.Context) {
@@ -350,4 +341,115 @@ type UserClaims struct {
 	jwt.RegisteredClaims
 	ID        int64
 	UserAgent string
+}
+
+func (u *UserHandler) SendLoginSMSCode(ctx *gin.Context) {
+	type Req struct {
+		Phone string `json:"phone"`
+	}
+	var req Req
+	const biz = "login"
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+	if req.Phone == "" {
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 5,
+			Msg:  "输入有误",
+			Data: nil,
+		})
+	}
+	err := u.svcCode.Send(ctx, biz, req.Phone)
+	switch err {
+	case nil:
+		ctx.JSON(http.StatusOK, domain.Result{
+			Msg: "验证码发送成功",
+		})
+	case service.ErrSetCodeFrequently:
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 5,
+			Msg:  "验证码发送太频繁",
+			Data: nil,
+		})
+	default:
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 5,
+			Msg:  "验证码发送失败",
+			Data: nil,
+		})
+	}
+
+}
+
+func (u *UserHandler) LoginSMS(ctx *gin.Context) {
+	type Req struct {
+		Phone string `json:"phone"`
+		Code  string `json:"code"`
+	}
+	var req Req
+	const biz = "login"
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+	if req.Phone == "" {
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 5,
+			Msg:  "手机号码输入有误",
+			Data: nil,
+		})
+	}
+	if req.Code == "" {
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 5,
+			Msg:  "验证码输入有误",
+			Data: nil,
+		})
+	}
+	judgment, err := u.svcCode.Verify(ctx, biz, req.Phone, req.Code)
+	if err != nil {
+		if err == service.ErrVerifyCodeFrequently {
+			ctx.JSON(http.StatusOK, domain.Result{
+				Code: 5,
+				Msg:  "验证次数过多",
+			})
+			return
+		}
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 5,
+			Msg:  "系统错误",
+		})
+		return
+	}
+	if !judgment {
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 4,
+			Msg:  "验证码有误",
+		})
+		return
+	}
+	// 我这个手机号，会不会是一个新用户呢？
+	// 这样子
+	_, err = u.svc.FindOrCreate(ctx, req.Phone)
+	if err != nil {
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 5,
+			Msg:  "系统错误",
+		})
+		return
+	}
+
+	// 这边要怎么办呢？
+	// 从哪来？
+	//if err = u.SetJWTToken(ctx, user.Id); err != nil {
+	//	ctx.JSON(http.StatusOK, domain.Result{
+	//		Code: 5,
+	//		Msg:  "系统错误",
+	//	})
+	//	return
+	//}
+
+	ctx.JSON(http.StatusOK, domain.Result{
+		Msg: "验证码校验通过",
+	})
+
 }

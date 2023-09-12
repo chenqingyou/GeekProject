@@ -3,8 +3,10 @@ package main
 import (
 	"GeekProject/homeWork/class2/webook/config"
 	"GeekProject/homeWork/class2/webook/internal/repository"
+	"GeekProject/homeWork/class2/webook/internal/repository/cache"
 	"GeekProject/homeWork/class2/webook/internal/repository/dao"
 	"GeekProject/homeWork/class2/webook/internal/service"
+	"GeekProject/homeWork/class2/webook/internal/service/sms/memory"
 	"GeekProject/homeWork/class2/webook/internal/web"
 	"GeekProject/homeWork/class2/webook/internal/web/middleware"
 	"fmt"
@@ -65,16 +67,21 @@ func initServer() *gin.Engine {
 	}))
 	store := cookie.NewStore([]byte("secret"))
 	server.Use(sessions.Sessions("mysession", store))
-	server.Use(middleware.NewLoginMiddlewareBuilder().DepositPaths("/users/signup").DepositPaths("/users/login").BuildSess())
+	server.Use(middleware.NewLoginMiddlewareBuilder().DepositPaths("/users/signup").
+		DepositPaths("/users/login").DepositPaths("/users/loginSms/code").BuildSess())
 
 	return server
 }
 
 func initUser(serverDB *gorm.DB) *web.UserHandler {
 	userDao := dao.NewUserDao(serverDB)
-	userRepo := repository.NewUserRepository(userDao)
+	localCache := cache.NewUserLocalCache()
+	localRepository := repository.NewCodeRepository(localCache)
+	userRepo := repository.NewUserRepository(userDao, localCache)
 	userSvc := service.NewUserService(userRepo)
-	user := web.NewUserHandler(userSvc)
+	sms := memory.NewSmSService()
+	cacheSvc := service.NewCodeService(localRepository, sms)
+	user := web.NewUserHandler(userSvc, cacheSvc)
 	return user
 }
 

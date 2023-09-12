@@ -7,6 +7,7 @@ type UserDomain struct {
 	Id              int64     `json:"id,omitempty"`
 	Email           string    `json:"email,omitempty"`
 	Password        string    `json:"password,omitempty"`
+	Phone           string    `json:"phone,omitempty"`
 	Nickname        string    `json:"nickname,omitempty"`
 	Birthday        string    `json:"birthday,omitempty"`
 	PersonalProfile string    `json:"personalProfile,omitempty"`

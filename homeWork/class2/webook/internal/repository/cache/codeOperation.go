@@ -6,14 +6,11 @@ import (
 )
 
 var (
-	// 存储验证码和过期时间
-	codeMap = make(map[string]string)
 	// 存储验证码尝试次数
-	codeCountMap = make(map[string]int)
+	codeCount = sync.Map{}
 	// 用于保证map操作的原子性
-	mu sync.Mutex
-
-	cache = sync.Map{}
+	mu        sync.Mutex
+	cacheCode = sync.Map{}
 )
 
 type CacheItem struct {
@@ -22,30 +19,26 @@ type CacheItem struct {
 	Expiration time.Time
 }
 
-// 设置验证码
-func setCode(key, val string) {
-	mu.Lock()
-	defer mu.Unlock()
-	codeMap[key] = val
-	codeCountMap[key] = 3
+func setCodeUnlocked(key, val string) {
+	cacheCode.Store(key, val)
+	codeCount.Store(key, 3)
 	// 设置600秒后过期
 	go func() {
 		time.Sleep(60 * time.Second)
 		mu.Lock()
-		delete(codeMap, key)
-		delete(codeCountMap, key)
+		cacheCode.Delete(key)
+		codeCount.Delete(key)
 		mu.Unlock()
 	}()
 }
 
-// 检查验证码
 func checkAndSetCode(key, val string) int {
 	mu.Lock()
 	defer mu.Unlock()
-	ttl, ok := codeMap[key]
+	ttl, ok := cacheCode.Load(key)
 	if !ok {
 		// key不存在，直接设置
-		setCode(key, val)
+		setCodeUnlocked(key, val)
 		return 0
 	}
 	// key存在但没有过期时间（不应该发生）
@@ -61,14 +54,14 @@ func checkAndSetCode(key, val string) int {
 func checkCode(key, expectedCode string) int {
 	mu.Lock()
 	defer mu.Unlock()
-	value, ok := cache.Load(key)
+	value, ok := cacheCode.Load(key)
 	if !ok {
 		return -1
 	}
 	item := value.(*CacheItem)
 	if item.Expiration.Before(time.Now()) {
 		// 已过期
-		cache.Delete(key)
+		cacheCode.Delete(key)
 		return -1
 	}
 	if item.Cnt <= 0 {

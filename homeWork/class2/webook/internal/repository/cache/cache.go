@@ -20,20 +20,17 @@ type UserLocalCache struct {
 	expiration time.Duration
 }
 
-func NewUserLocalCache() UserCacheInterface {
+func NewUserLocalCache() CodeCache {
 	return &UserLocalCache{
 		expiration: 1 * time.Minute,
 	}
 }
 
-type UserCacheInterface interface {
-	Get(ctx context.Context, id int64) (domain.UserDomain, error)
-	Set(ctx context.Context, doU domain.UserDomain) error
-}
-
 type CodeCache interface {
 	SetCode(ctx context.Context, biz, phone, code string) error
 	Verify(ctx context.Context, biz, phone, inputCode string) (bool, error)
+	Get(ctx context.Context, id int64) (domain.UserDomain, error)
+	Set(ctx context.Context, doU domain.UserDomain) error
 }
 
 type UserRedisCache struct {
