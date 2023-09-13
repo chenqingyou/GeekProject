@@ -20,14 +20,17 @@ type CacheItem struct {
 }
 
 func setCodeUnlocked(key, val string) {
-	cacheCode.Store(key, val)
-	codeCount.Store(key, 3)
+	item := CacheItem{
+		Code:       val,
+		Cnt:        3,
+		Expiration: time.Now().Add(5 * time.Minute),
+	}
+	cacheCode.Store(key, item)
 	// 设置600秒后过期
 	go func() {
 		time.Sleep(60 * time.Second)
 		mu.Lock()
 		cacheCode.Delete(key)
-		codeCount.Delete(key)
 		mu.Unlock()
 	}()
 }
@@ -58,7 +61,7 @@ func checkCode(key, expectedCode string) int {
 	if !ok {
 		return -1
 	}
-	item := value.(*CacheItem)
+	item := value.(CacheItem)
 	if item.Expiration.Before(time.Now()) {
 		// 已过期
 		cacheCode.Delete(key)
