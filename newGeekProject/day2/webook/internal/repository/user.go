@@ -84,13 +84,13 @@ func (ur *UserRepository) FindById(ctx context.Context, id int64) (domain.UserDo
 	}
 	getU = ur.entityToDomain(ud)
 	//缓存会导致数据不一致
-	//go func() {
-	err = ur.cache.Set(ctx, getU)
-	if err != nil {
-		//打日志做监控
-		//return domain.UserDomain{}, err
-	}
-	//	}()
+	go func() {
+		err = ur.cache.Set(ctx, getU)
+		if err != nil {
+			//打日志做监控
+			//return domain.UserDomain{}, err
+		}
+	}()
 	return getU, nil
 	// 选加载 —— 做好兜底，万一 Redis 真的崩了，你要保护住你的数据库
 	// 我数据库限流呀！

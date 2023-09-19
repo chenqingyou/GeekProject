@@ -78,8 +78,6 @@ func TestUserHandler_SignUp(t *testing.T) {
 			wantBody: "Mailbox conflict",
 		},
 	}
-
-	// TODO: Add test cases.
 	for _, tt := range testCase {
 		t.Run(tt.name, func(t *testing.T) {
 			server := gin.Default()
