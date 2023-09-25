@@ -2,6 +2,7 @@ package tencent
 
 import (
 	mySms "GeekProject/newGeekProject/day2/webook/internal/service/sms"
+	"GeekProject/newGeekProject/day2/webook/pkg/ratelimit"
 	"context"
 	"fmt"
 	"github.com/ecodeclub/ekit"
@@ -14,21 +15,25 @@ type SmsService struct {
 	appId    *string
 	signName *string
 	client   *sms.Client
+	//第三方服务限流
+	limiter ratelimit_win.LimitInterface
 }
 
-func NewSmsService(client *sms.Client, appId, signName string) *SmsService {
+func NewSmsService(client *sms.Client, appId, signName string, limiter ratelimit_win.LimitInterface) *SmsService {
 	return &SmsService{
 		client:   client,
 		appId:    ekit.ToPtr[string](appId),
 		signName: ekit.ToPtr[string](signName),
+		limiter:  limiter,
 	}
 }
 
-func (s SmsService) Send(ctx context.Context, tplID string, args []mySms.NameArg, numbers ...string) error {
+// biz代表的就是tplId
+func (s SmsService) Send(ctx context.Context, biz string, args []mySms.NameArg, numbers ...string) error {
 	smsReq := sms.NewSendSmsRequest()
 	smsReq.SignName = s.signName
 	smsReq.SmsSdkAppId = s.signName
-	smsReq.TemplateId = ekit.ToPtr(tplID)
+	smsReq.TemplateId = ekit.ToPtr(biz)
 	smsReq.PhoneNumberSet = s.ToSliceFunc(numbers)
 	smsReq.TemplateParamSet = slice.Map[mySms.NameArg, *string](args, func(idx int, src mySms.NameArg) *string {
 		return &src.Val

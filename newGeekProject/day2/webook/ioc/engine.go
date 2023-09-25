@@ -4,6 +4,7 @@ import (
 	"GeekProject/newGeekProject/day2/webook/internal/web"
 	"GeekProject/newGeekProject/day2/webook/internal/web/middleware"
 	"GeekProject/newGeekProject/day2/webook/pkg/ginx/middlewares/ratelimit"
+	"GeekProject/newGeekProject/day2/webook/pkg/ratelimit_win"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/memstore"
@@ -13,17 +14,18 @@ import (
 	"time"
 )
 
-func InitGin(mdls []gin.HandlerFunc, userHdl *web.UserHandler) *gin.Engine {
+func InitGin(mdls []gin.HandlerFunc, userHdl *web.UserHandler, wechat *web.OAuth2WechatHandler) *gin.Engine {
 	server := gin.Default()
 	server.Use(mdls...)
 	userHdl.RegisterRoutesCt(server)
+	wechat.RegisterRouter(server)
 	return server
 }
 
 func InitMiddlewares(redisClient redis.Cmdable) []gin.HandlerFunc {
 	return []gin.HandlerFunc{
 		//使用限流的中间件
-		ratelimit.NewBuilder(redisClient, time.Second, 100).Build(),
+		ratelimit.NewBuilder(ratelimit_win.NewRedisSlidingWindowLimiter(redisClient, time.Second, 100)).Build(),
 		/*
 				• AllowCrendentials：是否允许带上用户认证 信息（比如 cookie）。
 				• AllowHeader：业务请求中可以带上的头。
