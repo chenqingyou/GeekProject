@@ -50,6 +50,6 @@ func (wh *OAuth2WechatHandler) Callback(ctx *gin.Context) {
 		})
 		return
 	}
-
-	ctx.String(http.StatusOK, "oK")
+	fmt.Printf("info[%v]", info)
+	ctx.String(http.StatusOK, "ok")
 }

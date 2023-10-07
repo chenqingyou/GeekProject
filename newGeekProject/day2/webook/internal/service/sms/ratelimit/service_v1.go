@@ -2,7 +2,7 @@ package ratelimit
 
 import (
 	"GeekProject/newGeekProject/day2/webook/internal/service/sms"
-	"GeekProject/newGeekProject/day2/webook/pkg/ratelimit"
+	"GeekProject/newGeekProject/day2/webook/pkg/ratelimit_win"
 	"context"
 	"fmt"
 )

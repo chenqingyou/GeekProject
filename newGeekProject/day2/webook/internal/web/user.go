@@ -110,7 +110,6 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 		return
 	}
 
-	fmt.Printf("%v\n", req)
 	//下面是服务端的注册用户
 	err = u.svc.SignUp(ctx, domain.UserDomain{
 		Email:    req.Email,

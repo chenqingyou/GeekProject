@@ -46,7 +46,7 @@ func TestUserHandler_SignUp(t *testing.T) {
 			wantBody: "Registered successfully",
 		},
 		{
-			name: "负例-参数不对",
+			name: "负例-参数不对bind失败",
 			mock: func(ctrl *gomock.Controller) service.UserServiceInterface {
 				userSvc := svcmocks.NewMockUserServiceInterface(ctrl)
 				//负例还没有调用到signup方法

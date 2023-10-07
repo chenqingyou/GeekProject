@@ -6,21 +6,19 @@ import (
 )
 
 var (
-	// 存储验证码尝试次数
-	codeCount = sync.Map{}
 	// 用于保证map操作的原子性
 	mu        sync.Mutex
 	cacheCode = sync.Map{}
 )
 
-type CacheItem struct {
+type ItemCache struct {
 	Code       string
 	Cnt        int
 	Expiration time.Time
 }
 
 func setCodeUnlocked(key, val string) {
-	item := CacheItem{
+	item := ItemCache{
 		Code:       val,
 		Cnt:        3,
 		Expiration: time.Now().Add(5 * time.Minute),
@@ -61,7 +59,7 @@ func checkCode(key, expectedCode string) int {
 	if !ok {
 		return -1
 	}
-	item := value.(CacheItem)
+	item := value.(ItemCache)
 	if item.Expiration.Before(time.Now()) {
 		// 已过期
 		cacheCode.Delete(key)

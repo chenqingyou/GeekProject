@@ -144,6 +144,7 @@ func (u *UserHandler) Longin(ctx *gin.Context) {
 	}
 	var req SignUpReq
 	if err := ctx.Bind(&req); err != nil {
+		fmt.Printf("err[%v]\n", err)
 		return
 	}
 	//调用服务层的登录接口
@@ -153,7 +154,7 @@ func (u *UserHandler) Longin(ctx *gin.Context) {
 	})
 	if err == service.ErrInvalidUserOrPassword {
 		ctx.JSON(http.StatusOK, domain.Result{
-			Code: 0,
+			Code: 4,
 			Msg:  "The account or password is incorrect",
 			Data: nil,
 		})
@@ -167,40 +168,39 @@ func (u *UserHandler) Longin(ctx *gin.Context) {
 		})
 		return
 	}
-
-	//使用jwt
-	//privateKey, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader) //密钥
-	//if err != nil {
-	//	ctx.JSON(http.StatusInternalServerError, domain.Result{
-	//		Code: 0,
-	//		Msg:  " fmt.Sprintf(\"err [%v]\", err)",
-	//		Data: nil,
-	//	})
-	//	return
-	//}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS512, UserClaims{
-		RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute))},
-		ID:               uLoginMeg.Id,
-		UserAgent:        ctx.Request.UserAgent(),
-	})
-	signedString, err := token.SignedString([]byte("95osj3fUD7fo0mlYdDbncXz4VD2igvf0"))
-	if err != nil {
-		ctx.JSON(http.StatusOK, domain.Result{
+	if u.JWTToken(ctx, uLoginMeg, err) {
+		ctx.JSON(http.StatusInternalServerError, domain.Result{
 			Code: 5,
-			Msg:  "SignedString err",
+			Msg:  "System error",
 			Data: nil,
 		})
 		return
 	}
-	log.Printf("x-jwt-tokn[%v]\n", signedString)
-	ctx.Header("x-jwt-tokn", signedString)
-	ctx.Header("x-jwt-tokn", signedString)
 	ctx.JSON(http.StatusOK, domain.Result{
 		Code: 0,
 		Msg:  "Login successful",
 		Data: nil,
 	})
 	return
+}
+
+func (u *UserHandler) JWTToken(ctx *gin.Context, uLoginMeg domain.UserDomain, err error) bool {
+	fmt.Printf("uLoginMeg[%v]\n", uLoginMeg)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, UserClaims{
+		RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute))},
+		ID:               uLoginMeg.Id,
+		UserAgent:        ctx.Request.UserAgent(),
+	})
+	if token == nil {
+		return true
+	}
+	signedString, err := token.SignedString([]byte("95osj3fUD7fo0mlYdDbncXz4VD2igvf0"))
+	if err != nil {
+		return true
+	}
+	log.Printf("x-jwt-tokn[%v]\n", signedString)
+	ctx.Header("x-jwt-tokn", signedString)
+	return false
 }
 
 /*
