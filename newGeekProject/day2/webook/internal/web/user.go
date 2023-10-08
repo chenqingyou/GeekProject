@@ -3,17 +3,12 @@ package web
 import (
 	"GeekProject/newGeekProject/day2/webook/internal/domain"
 	"GeekProject/newGeekProject/day2/webook/internal/service"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"net/http"
-	"time"
 )
 
 const (
@@ -32,6 +27,7 @@ type UserHandler struct {
 	passWordExp *regexp.Regexp
 	emailExp    *regexp.Regexp
 	codeSvc     service.CodeServiceInterface
+	jwtHandler  //用组合的方式，不使用指针
 }
 
 func NewUserHandler(svc service.UserServiceInterface, codeSvc service.CodeServiceInterface) *UserHandler {
@@ -197,29 +193,6 @@ func (u *UserHandler) LonginJwt(ctx *gin.Context) {
 	}
 	ctx.String(http.StatusOK, "Login successful\n")
 	return
-}
-
-func (u *UserHandler) SetJWTToken(ctx *gin.Context, uId int64) error {
-	//使用 ecdsa.GenerateKey 生成了一个 ECDSA 密钥对，并将私钥用于 JWT 的签名
-	privateKey, err := ecdsa.GenerateKey(elliptic.P521(), rand.Reader)
-	if err != nil {
-		return err
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodES512, TokenClaims{
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 1)), //过期时间
-			NotBefore: nil,
-		},
-		Uid:       uId,
-		UserAgent: ctx.Request.UserAgent(),
-	})
-	signedString, err := token.SignedString(privateKey)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("signedString [%v]\n", signedString)
-	ctx.Header("x-jwt-token", signedString)
-	return nil
 }
 
 func (u *UserHandler) Logout(ctx *gin.Context) {
@@ -392,11 +365,4 @@ func (u *UserHandler) LoginSMS(ctx *gin.Context) {
 		Msg: "验证码校验通过",
 	})
 
-}
-
-// TokenClaims 实现jwt的接口
-type TokenClaims struct {
-	jwt.RegisteredClaims
-	Uid       int64
-	UserAgent string
 }

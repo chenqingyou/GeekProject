@@ -47,16 +47,28 @@ func (sw *serviceWechat) VerifyCode(ctx context.Context, code, state string) (do
 	if err != nil {
 		return domain.WechatInfo{}, err
 	}
+
 	decoder := json.NewDecoder(resp.Body)
 	var res Result
 	err = decoder.Decode(&res)
 	if err != nil {
 		return domain.WechatInfo{}, err
 	}
+
+	//实现2将整个body都读取出来
+	//Body, err := io.ReadAll(resp.Body)
+	//err = json.Unmarshal(Body, &res)
+	//if err != nil {
+	//	return domain.WechatInfo{}, err
+	//}
+
 	if res.ErrCode != 0 {
 		return domain.WechatInfo{}, fmt.Errorf("微信返回错误信息%v[%v]\n", res.ErrCode, res.ErrMsg)
 	}
-	return domain.WechatInfo{}, nil
+	return domain.WechatInfo{
+		OpenID:  res.OpenID,
+		UnionID: res.UnionID,
+	}, nil
 }
 
 type Result struct {

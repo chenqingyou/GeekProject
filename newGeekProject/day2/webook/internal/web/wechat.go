@@ -2,6 +2,7 @@ package web
 
 import (
 	"GeekProject/newGeekProject/day2/webook/internal/domain"
+	"GeekProject/newGeekProject/day2/webook/internal/service"
 	"GeekProject/newGeekProject/day2/webook/internal/service/oauth2/wechat"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -10,11 +11,14 @@ import (
 
 type OAuth2WechatHandler struct {
 	wechatS wechat.ServiceWechatInterface
+	jwtHandler
+	userService service.UserServiceInterface
 }
 
-func NewOAuth2WechatHandler(wechatS wechat.ServiceWechatInterface) *OAuth2WechatHandler {
+func NewOAuth2WechatHandler(wechatS wechat.ServiceWechatInterface, userService service.UserServiceInterface) *OAuth2WechatHandler {
 	return &OAuth2WechatHandler{
-		wechatS: wechatS,
+		wechatS:     wechatS,
+		userService: userService,
 	}
 }
 
@@ -50,6 +54,26 @@ func (wh *OAuth2WechatHandler) Callback(ctx *gin.Context) {
 		})
 		return
 	}
+	//从userService里面那uid
+	createWechat, err := wh.userService.FindByCreateWechat(ctx, info)
+	if err != nil {
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 5,
+			Msg:  "系统错误",
+			Data: nil,
+		})
+		return
+	}
+	err = wh.SetJWTToken(ctx, createWechat.Id)
+	if err != nil {
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 5,
+			Msg:  "系统错误",
+			Data: nil,
+		})
+		return
+	}
+
 	fmt.Printf("info[%v]", info)
 	ctx.String(http.StatusOK, "ok")
 }

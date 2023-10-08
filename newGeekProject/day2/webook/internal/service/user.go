@@ -18,6 +18,7 @@ type UserServiceInterface interface {
 	Login(ctx context.Context, domainU domain.UserDomain) (domain.UserDomain, error)
 	Profile(ctx context.Context, id int64) (domain.UserDomain, error)
 	FindOrCreate(ctx context.Context, phone string) (domain.UserDomain, error)
+	FindByCreateWechat(ctx context.Context, wechatInfo domain.WechatInfo) (domain.UserDomain, error)
 }
 
 // UserService 服务端，调用repository
@@ -84,4 +85,25 @@ func (us *UserService) FindOrCreate(ctx context.Context, phone string) (domain.U
 	}
 	// 因为这里会遇到主从延迟的问题
 	return us.repo.FindByPhone(ctx, phone) //在查找一次返回id
+}
+
+func (us *UserService) FindByCreateWechat(ctx context.Context, wechatInfo domain.WechatInfo) (domain.UserDomain, error) {
+	u, err := us.repo.FindByWechat(ctx, wechatInfo.OpenID)
+	if err != repository.ErrUserNotFound {
+		// 绝大部分请求进来这里
+		// nil 会进来这里
+		// 不为 ErrUserNotFound 的也会进来这里
+		return u, err
+	}
+	//代表这个用户没有注册
+	u = domain.UserDomain{
+		WechatInfo: wechatInfo,
+	}
+	//注册一次
+	err = us.repo.CreateUser(ctx, u)
+	if err != nil && err != repository.ErrUserNotFound {
+		return u, err
+	}
+	// 因为这里会遇到主从延迟的问题
+	return us.repo.FindByWechat(ctx, wechatInfo.OpenID) //在查找一次返回id
 }

@@ -22,6 +22,7 @@ type UserDaoInterface interface {
 	FindById(cxt context.Context, Id int64) (UserDB, error)
 	FindByEmail(cxt context.Context, email string) (UserDB, error)
 	FindByPhone(cxt context.Context, phone string) (UserDB, error)
+	FindByWechat(cxt context.Context, openID string) (UserDB, error)
 	InsertUser(cxt context.Context, userDB UserDB) error
 	EditUser(cxt context.Context, userDB UserDB) error
 }
@@ -46,6 +47,13 @@ func (ud *UserDao) FindByEmail(cxt context.Context, email string) (UserDB, error
 func (ud *UserDao) FindByPhone(cxt context.Context, phone string) (UserDB, error) {
 	var userDBEmail UserDB
 	err := ud.db.WithContext(cxt).First(&userDBEmail, "phone = ?", phone).Error
+	//err := ud.db.WithContext(cxt).Where("email = ?", userDB.Email).First(&userDBEmail).Error
+	return userDBEmail, err
+}
+
+func (ud *UserDao) FindByWechat(cxt context.Context, openID string) (UserDB, error) {
+	var userDBEmail UserDB
+	err := ud.db.WithContext(cxt).First(&userDBEmail, "WechatOpenID = ?", openID).Error
 	//err := ud.db.WithContext(cxt).Where("email = ?", userDB.Email).First(&userDBEmail).Error
 	return userDBEmail, err
 }
@@ -94,4 +102,11 @@ type UserDB struct {
 	CreatTime  int64
 	UpdateTime int64
 	DeleteTime int64
+	//微信的字段
+	//索引的最左匹配原则，假如索引在《A,B,C》创建好了
+	//WHERE 里面带了ABC可以用
+	//WHERE里面没有A，就不能用
+	//可以创建联合索引，保证WechatUnionID，WechatOpenID不会重复
+	WechatUnionID sql.NullString `gorm:"unique"`
+	WechatOpenID  sql.NullString `gorm:"unique"`
 }

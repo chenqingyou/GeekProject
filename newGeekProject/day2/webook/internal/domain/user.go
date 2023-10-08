@@ -14,13 +14,11 @@ type UserDomain struct {
 	Birthday        string    `json:"birthday,omitempty"`
 	PersonalProfile string    `json:"personalProfile,omitempty"`
 	Ctime           time.Time `json:"ctime,omitempty"`
+	WechatInfo      WechatInfo
 }
 
 type Result struct {
 	Code int64  `json:"code"`
 	Msg  string `json:"msg"`
 	Data any    `json:"data"`
-}
-
-type WechatInfo struct {
 }
