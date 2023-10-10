@@ -6,14 +6,14 @@ import (
 	"fmt"
 )
 
-type ServiceSmsInterface struct {
+type ServiceMemorySmsInterface struct {
 }
 
-func NewService() *ServiceSmsInterface {
-	return &ServiceSmsInterface{}
+func NewService() *ServiceMemorySmsInterface {
+	return &ServiceMemorySmsInterface{}
 }
 
-func (s *ServiceSmsInterface) Send(ctx context.Context, tplID string, args []mySms.NameArg, numbers ...string) error {
+func (s *ServiceMemorySmsInterface) Send(ctx context.Context, tplID string, args []mySms.NameArg, numbers ...string) error {
 	fmt.Println(args)
 	return nil
 }

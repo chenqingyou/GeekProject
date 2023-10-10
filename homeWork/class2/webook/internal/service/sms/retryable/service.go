@@ -1,7 +1,7 @@
 package retryable
 
 import (
-	"GeekProject/newGeekProject/day2/webook/internal/service/sms"
+	"GeekProject/homeWork/class2/webook/internal/service/sms"
 	"context"
 	"errors"
 )

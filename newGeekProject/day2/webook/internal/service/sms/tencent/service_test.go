@@ -27,7 +27,7 @@ func TestSmsService_Send(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := SmsService{
+			s := SmsTencentService{
 				appId:    tt.fields.appId,
 				signName: tt.fields.signName,
 				client:   tt.fields.client,

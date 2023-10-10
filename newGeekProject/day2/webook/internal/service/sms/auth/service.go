@@ -7,13 +7,13 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// SmsService 装饰器用于来短信验证服务的权限控制
-type SmsService struct {
+// SmsAuthService 装饰器用于来短信验证服务的权限控制
+type SmsAuthService struct {
 	svc sms.ServiceSmsInterface
 	key string
 }
 
-func (s SmsService) Send(ctx context.Context, biz string, args []sms.NameArg, numbers ...string) error {
+func (s SmsAuthService) Send(ctx context.Context, biz string, args []sms.NameArg, numbers ...string) error {
 	//在这儿使用权限控制，用biz里面的token
 	var claims Claims
 	//进行token验证,如果这儿能解析成功，说明就是对应的业务方

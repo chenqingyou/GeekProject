@@ -11,7 +11,7 @@ import (
 	//sms "github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms/v20210111"
 )
 
-type SmsService struct {
+type SmsTencentService struct {
 	appId    *string
 	signName *string
 	client   *sms.Client
@@ -19,8 +19,8 @@ type SmsService struct {
 	limiter ratelimit_win.LimitInterface
 }
 
-func NewSmsService(client *sms.Client, appId, signName string, limiter ratelimit_win.LimitInterface) *SmsService {
-	return &SmsService{
+func NewSmsService(client *sms.Client, appId, signName string, limiter ratelimit_win.LimitInterface) *SmsTencentService {
+	return &SmsTencentService{
 		client:   client,
 		appId:    ekit.ToPtr[string](appId),
 		signName: ekit.ToPtr[string](signName),
@@ -29,7 +29,7 @@ func NewSmsService(client *sms.Client, appId, signName string, limiter ratelimit
 }
 
 // biz代表的就是tplId
-func (s SmsService) Send(ctx context.Context, biz string, args []mySms.NameArg, numbers ...string) error {
+func (s SmsTencentService) Send(ctx context.Context, biz string, args []mySms.NameArg, numbers ...string) error {
 	smsReq := sms.NewSendSmsRequest()
 	smsReq.SignName = s.signName
 	smsReq.SmsSdkAppId = s.signName
@@ -50,7 +50,7 @@ func (s SmsService) Send(ctx context.Context, biz string, args []mySms.NameArg, 
 	return err
 }
 
-func (s SmsService) ToSliceFunc(args []string) []*string {
+func (s SmsTencentService) ToSliceFunc(args []string) []*string {
 	return slice.Map[string, *string](args, func(idx int, src string) *string {
 		return &src
 	})

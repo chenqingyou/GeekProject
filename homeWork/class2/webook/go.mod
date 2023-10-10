@@ -4,6 +4,7 @@ go 1.20
 
 require (
 	github.com/dlclark/regexp2 v1.10.0
+	github.com/ecodeclub/ekit v0.0.8
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-contrib/sessions v0.0.5
 	github.com/gin-gonic/gin v1.9.1
@@ -11,6 +12,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.0.0
 	github.com/redis/go-redis/v9 v9.1.0
 	github.com/stretchr/testify v1.8.4
+	go.uber.org/mock v0.3.0
 	golang.org/x/crypto v0.12.0
 	gorm.io/driver/mysql v1.5.1
 	gorm.io/gorm v1.25.3
