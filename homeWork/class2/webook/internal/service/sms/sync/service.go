@@ -82,6 +82,21 @@ func (t *TimeLongFailoverSyncSMSService) performSend(ctx context.Context, tpl st
 	}
 	return err
 }
+func (t *TimeLongFailoverSyncSMSService) updateAverageResponseTime(responseTime int64) int64 {
+	// 如果当前窗口的大小已经达到了预设的窗口大小
+	if len(t.responseTimes) >= t.windowSize {
+		// 从总和中移除最旧的响应时间
+		oldest := t.responseTimes[0]
+		t.sumResponse -= oldest
+		// 从窗口中移除最旧的响应时间，以保持窗口大小不变
+		t.responseTimes = t.responseTimes[1:]
+	}
+	// 将新的响应时间添加到窗口和总和中
+	t.responseTimes = append(t.responseTimes, responseTime)
+	t.sumResponse += responseTime
+	// 返回当前窗口的平均响应时间
+	return t.sumResponse / int64(len(t.responseTimes))
+}
 
 func (t *TimeLongFailoverSyncSMSService) handleAsyncFallback(ctx context.Context, tpl string, args []sms.NameArg, numbers ...string) error {
 	if err := t.repSMS.InsertSMS(ctx, domain.SmsDomain{
@@ -100,22 +115,6 @@ func (t *TimeLongFailoverSyncSMSService) handleAsyncFallback(ctx context.Context
 	return errLimit
 }
 
-func (t *TimeLongFailoverSyncSMSService) updateAverageResponseTime(responseTime int64) int64 {
-	// 如果当前窗口的大小已经达到了预设的窗口大小
-	if len(t.responseTimes) >= t.windowSize {
-		// 从总和中移除最旧的响应时间
-		oldest := t.responseTimes[0]
-		t.sumResponse -= oldest
-		// 从窗口中移除最旧的响应时间，以保持窗口大小不变
-		t.responseTimes = t.responseTimes[1:]
-	}
-	// 将新的响应时间添加到窗口和总和中
-	t.responseTimes = append(t.responseTimes, responseTime)
-	t.sumResponse += responseTime
-	// 返回当前窗口的平均响应时间
-	return t.sumResponse / int64(len(t.responseTimes))
-}
-
 func (t *TimeLongFailoverSyncSMSService) syncSend(ctx context.Context, tpl string) error {
 	//先根据id去数据库里面查询这个tpl
 	sendDomain, err := t.repSMS.SendSMS(ctx, tpl)
@@ -128,7 +127,6 @@ func (t *TimeLongFailoverSyncSMSService) syncSend(ctx context.Context, tpl strin
 
 /*
 缺点：
-对瞬时变化反应不足：只看平均响应时间可能会掩盖瞬时的变化。例如，如果一段时间的响应很快，突然之间有几次响应很慢，简单的平均值可能不会反映这种情况。
 不考虑长期趋势：只考虑最近的响应时间，而不是更长期的趋势，可能导致过早或过晚地触发故障转移。
 对异常值敏感：单个的长时间响应（可能是一个异常值）可能导致故障转移，即使系统总体上还是健康的。
 反复切换：如果两个服务提供商的响应时间相差不大，可能会导致反复的故障转移，这可能是不必要的，并可能导致更大的延迟和不稳定性。

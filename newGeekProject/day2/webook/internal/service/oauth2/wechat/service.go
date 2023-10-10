@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	uuid "github.com/lithammer/shortuuid/v4"
 	"net/http"
 	"net/url"
 )
@@ -13,13 +12,13 @@ import (
 var redirectUrl = url.PathEscape("https://localhost.com//ouths2/wechat")
 
 type ServiceWechatInterface interface {
-	AuthUrl(ctx context.Context) (string, error)
-	VerifyCode(ctx context.Context, code, state string) (domain.WechatInfo, error)
+	AuthUrl(ctx context.Context, state string) (string, error)
+	VerifyCode(ctx context.Context, code string) (domain.WechatInfo, error)
 }
 type serviceWechat struct {
 	appId     string
 	appSecret string
-	client    *http.Client
+	client    *http.Client ``
 }
 
 func NewServiceWechat(appId, appSecret string) ServiceWechatInterface {
@@ -30,13 +29,13 @@ func NewServiceWechat(appId, appSecret string) ServiceWechatInterface {
 	}
 }
 
-func (sw *serviceWechat) AuthUrl(ctx context.Context) (string, error) {
+func (sw *serviceWechat) AuthUrl(ctx context.Context, state string) (string, error) {
 	const urlPattern = "https://open.weixin.qq.com/connect/qrconnect?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_login&state=%s#wechat_redirect"
-	state := uuid.New()
+
 	return fmt.Sprintf(urlPattern, sw.appId, redirectUrl, state), nil
 }
 
-func (sw *serviceWechat) VerifyCode(ctx context.Context, code, state string) (domain.WechatInfo, error) {
+func (sw *serviceWechat) VerifyCode(ctx context.Context, code string) (domain.WechatInfo, error) {
 	const targetPattern = "https://api.weixin.qq.com/sns/oauth2/access_token?appid=%s&secret=%s&code=%s&grant_type=authorization_code"
 	target := fmt.Sprintf(targetPattern, sw.appId, sw.appSecret, code)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
