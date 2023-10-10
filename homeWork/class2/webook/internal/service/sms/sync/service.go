@@ -32,18 +32,21 @@ type TimeLongFailoverSyncSMSService struct {
 	limiter              ratelimit_win.LimitInterface
 	repSMS               repository.SMSRepositoryInterface
 	retryableService     retryable.SMSRetryableService
-	windowSize           int     // 窗口大小，决定了我们要考虑多少个最近的响应时间
+	windowSize           int     // 窗口大小
 	responseTimes        []int64 // 保存最近的响应时间
 	sumResponse          int64   // 保存当前窗口内所有响应时间的总和
 	totalRequests        int64   // 总的请求数
 	slowRequests         int64   // 超过平均响应时间的请求数
-	slowRequestThreshold float64 // 触发某种行为的慢请求比例，例如0.20
+	slowRequestThreshold float64 // 超过平均响应的比例
 }
 
-func NewTimeLongFailoverSMSService(svc sms.ServiceSmsInterface, limiter ratelimit_win.LimitInterface) sms.ServiceSmsInterface {
+func NewTimeLongFailoverSMSService(ssi sms.ServiceSmsInterface, limiter ratelimit_win.LimitInterface,
+	repSMS repository.SMSRepositoryInterface, retryableService retryable.SMSRetryableService, slowRequestThreshold float64) sms.ServiceSmsInterface {
 	return &TimeLongFailoverSyncSMSService{
-		svcsms:  svc,
-		limiter: limiter,
+		svcsms:               ssi,
+		limiter:              limiter,
+		windowSize:           1000,
+		slowRequestThreshold: slowRequestThreshold,
 	}
 }
 
@@ -131,7 +134,6 @@ func (t *TimeLongFailoverSyncSMSService) syncSend(ctx context.Context, tpl strin
 反复切换：如果两个服务提供商的响应时间相差不大，可能会导致反复的故障转移，这可能是不必要的，并可能导致更大的延迟和不稳定性。
 
 改进方法：
-引入滑动窗口：可以使用滑动窗口来计算一个时间范围内的平均响应时间，而不仅仅是两次响应之间的平均值。
 加权平均：最近的响应可以被赋予更高的权重，这样系统可以更快地对近期的变化作出反应。
 设置恢复阈值：在进行故障转移后，不要立即在响应时间变好时切回，而是设置一个恢复阈值，只有当响应时间比这个阈值好得多时才考虑切回。
 考虑其他指标：除了平均响应时间外，还可以考虑其他指标，如成功率、错误率等。
