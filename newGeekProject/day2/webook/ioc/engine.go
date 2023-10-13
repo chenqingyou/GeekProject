@@ -40,7 +40,7 @@ func InitMiddlewares(redisClient redis.Cmdable) []gin.HandlerFunc {
 			//AllowMethods:     []string{"PUT", "PATCH", "POST"},
 			AllowHeaders: []string{"Authorization", "Content-Type"},
 			//token获取
-			ExposeHeaders: []string{"x-jwt-token"},
+			ExposeHeaders: []string{"x-jwt-token", "x-refresh-token"},
 			//是否允许你带cookie之类的东西
 			AllowCredentials: true,
 			AllowOriginFunc: func(origin string) bool {
@@ -56,7 +56,12 @@ func InitMiddlewares(redisClient redis.Cmdable) []gin.HandlerFunc {
 		sessions.Sessions("mysession", memstore.NewStore([]byte("WZmKWNA1rxZf9TCoRBNsNDIlKdHb6DrzwK2NFF9n7a8ueRfinsAWFqVskMalYtgo"),
 			[]byte("lUzWwJAb6zaC1C5lRELHwDRNiYRwIC3nhL80dzBffEy7EsRGnzuOSa8BkqooCZ6W"))),
 		middleware.NewLoginJWTMiddlewareBuilder().DepositPaths(
-			"/users/signup").DepositPaths("/users/loginJwt").DepositPaths("/users/loginSms/code").DepositPaths("/users/loginSms").BuildSess(),
+			"/users/signup").
+			DepositPaths("/users/loginJwt").
+			DepositPaths("/users/loginSms/code").
+			DepositPaths("/users/loginSms").
+			DepositPaths("/users/refreshToken").
+			BuildSess(),
 	}
 }
 

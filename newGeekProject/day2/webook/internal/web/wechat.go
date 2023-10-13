@@ -111,6 +111,11 @@ func (wh *OAuth2WechatHandler) Callback(ctx *gin.Context) {
 		})
 		return
 	}
+	err = wh.setRefreshToken(ctx, createWechat.Id)
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, "System error")
+		return
+	}
 
 	fmt.Printf("info[%v]", info)
 	ctx.String(http.StatusOK, "ok")

@@ -10,7 +10,7 @@ func main() {
 	server.GET("/hello", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, "你好 你来了")
 	})
-	server.Run(":8081")
+	server.Run(":8080")
 }
 
 //func initUser(serverDB *gorm.DB, client redis.Cmdable) *web.UserHandler {

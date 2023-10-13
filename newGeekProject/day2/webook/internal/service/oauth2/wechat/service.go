@@ -15,27 +15,26 @@ type ServiceWechatInterface interface {
 	AuthUrl(ctx context.Context, state string) (string, error)
 	VerifyCode(ctx context.Context, code string) (domain.WechatInfo, error)
 }
-type serviceWechat struct {
-	appId     string
-	appSecret string
+type ServiceWechat struct {
+	appId     string       `wire:"appid"`
+	appSecret string       `wire:"appsecret"`
 	client    *http.Client ``
 }
 
-func NewServiceWechat(appId, appSecret string) ServiceWechatInterface {
-	return &serviceWechat{
+func NewServiceWechat(appId string, appSecret string) ServiceWechatInterface {
+	return &ServiceWechat{
 		appId:     appId,
 		appSecret: appSecret,
 		client:    http.DefaultClient, //没有选择依赖注入，将来会变，但是现在没有变化
 	}
 }
 
-func (sw *serviceWechat) AuthUrl(ctx context.Context, state string) (string, error) {
+func (sw *ServiceWechat) AuthUrl(ctx context.Context, state string) (string, error) {
 	const urlPattern = "https://open.weixin.qq.com/connect/qrconnect?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_login&state=%s#wechat_redirect"
-
 	return fmt.Sprintf(urlPattern, sw.appId, redirectUrl, state), nil
 }
 
-func (sw *serviceWechat) VerifyCode(ctx context.Context, code string) (domain.WechatInfo, error) {
+func (sw *ServiceWechat) VerifyCode(ctx context.Context, code string) (domain.WechatInfo, error) {
 	const targetPattern = "https://api.weixin.qq.com/sns/oauth2/access_token?appid=%s&secret=%s&code=%s&grant_type=authorization_code"
 	target := fmt.Sprintf(targetPattern, sw.appId, sw.appSecret, code)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)

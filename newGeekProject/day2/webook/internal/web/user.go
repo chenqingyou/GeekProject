@@ -8,6 +8,7 @@ import (
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"net/http"
 )
 
@@ -36,6 +37,7 @@ func NewUserHandler(svc service.UserServiceInterface, codeSvc service.CodeServic
 		codeSvc:     codeSvc,
 		passWordExp: regexp.MustCompile(passwordRegexPattern, regexp.None),
 		emailExp:    regexp.MustCompile(emailRegexPattern, regexp.None),
+		jwtHandler:  NewJwtHandler(),
 	}
 }
 
@@ -67,6 +69,7 @@ func (u *UserHandler) RegisterRoutesCt(server *gin.Engine) {
 	ug.POST("/loginSms/code", u.SendLoginSMSCode)
 	//校验验证码
 	ug.POST("/loginSms", u.LoginSMS)
+	ug.POST("/refreshToken", u.RefreshToken)
 }
 
 func (u *UserHandler) SignUp(ctx *gin.Context) {
@@ -120,6 +123,32 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 		return
 	}
 	ctx.String(http.StatusOK, "Registered successfully")
+}
+
+//RefreshToken 可以同时刷新长短token，用redis来记录是否有效，即使refresh_token是一次性的
+//参考登录校验部分，比较User-Agent
+
+func (u *UserHandler) RefreshToken(ctx *gin.Context) {
+	//只有这个接口，拿出来的是refresh_token，其他的都是短token
+	refreshToken := ExtractToken(ctx)
+	var rc RefreshClaims
+	token, err := jwt.ParseWithClaims(refreshToken, &rc, func(token *jwt.Token) (interface{}, error) {
+		return u.rtKey, nil
+	})
+	if err != nil || !token.Valid {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	err = u.SetJWTToken(ctx, rc.Uid)
+	if err != nil {
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	ctx.JSON(http.StatusOK, domain.Result{
+		Code: 0,
+		Msg:  "刷新成功",
+		Data: nil,
+	})
 }
 
 func (u *UserHandler) Longin(ctx *gin.Context) {
@@ -187,6 +216,11 @@ func (u *UserHandler) LonginJwt(ctx *gin.Context) {
 		return
 	}
 	err = u.SetJWTToken(ctx, uLoginMeg.Id)
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, "System error")
+		return
+	}
+	err = u.setRefreshToken(ctx, uLoginMeg.Id)
 	if err != nil {
 		ctx.String(http.StatusInternalServerError, "System error")
 		return
@@ -358,6 +392,11 @@ func (u *UserHandler) LoginSMS(ctx *gin.Context) {
 			Code: 5,
 			Msg:  "系统错误",
 		})
+		return
+	}
+	err = u.setRefreshToken(ctx, user.Id)
+	if err != nil {
+		ctx.String(http.StatusInternalServerError, "System error")
 		return
 	}
 
