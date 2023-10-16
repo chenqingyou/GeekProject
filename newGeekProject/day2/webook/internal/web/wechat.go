@@ -4,6 +4,7 @@ import (
 	"GeekProject/newGeekProject/day2/webook/internal/domain"
 	"GeekProject/newGeekProject/day2/webook/internal/service"
 	"GeekProject/newGeekProject/day2/webook/internal/service/oauth2/wechat"
+	myjwt "GeekProject/newGeekProject/day2/webook/internal/web/ijwt"
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -14,16 +15,18 @@ import (
 )
 
 type OAuth2WechatHandler struct {
-	wechatS wechat.ServiceWechatInterface
-	jwtHandler
+	wechatS     wechat.ServiceWechatInterface
+	jwtHandler  myjwt.HandlerJWTInterface
 	userService service.UserServiceInterface
 	stateKey    []byte
 }
 
-func NewOAuth2WechatHandler(wechatS wechat.ServiceWechatInterface, userService service.UserServiceInterface) *OAuth2WechatHandler {
+func NewOAuth2WechatHandler(wechatS wechat.ServiceWechatInterface, userService service.UserServiceInterface,
+	jwtHandler myjwt.HandlerJWTInterface) *OAuth2WechatHandler {
 	return &OAuth2WechatHandler{
 		wechatS:     wechatS,
 		userService: userService,
+		jwtHandler:  jwtHandler,
 		stateKey:    []byte("95osj3fUD7fo0mlYdDbncXz4VD2igvf0"),
 	}
 }
@@ -102,18 +105,13 @@ func (wh *OAuth2WechatHandler) Callback(ctx *gin.Context) {
 		})
 		return
 	}
-	err = wh.SetJWTToken(ctx, createWechat.Id)
+	err = wh.jwtHandler.SetLoginToken(ctx, createWechat.Id)
 	if err != nil {
 		ctx.JSON(http.StatusOK, domain.Result{
 			Code: 5,
 			Msg:  "系统错误",
 			Data: nil,
 		})
-		return
-	}
-	err = wh.setRefreshToken(ctx, createWechat.Id)
-	if err != nil {
-		ctx.String(http.StatusInternalServerError, "System error")
 		return
 	}
 

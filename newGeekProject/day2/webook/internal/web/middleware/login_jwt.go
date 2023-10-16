@@ -1,18 +1,21 @@
 package middleware
 
 import (
-	"GeekProject/newGeekProject/day2/webook/internal/web"
+	myjwt "GeekProject/newGeekProject/day2/webook/internal/web/ijwt"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
 	"net/http"
 )
 
 type LoginJWTMiddlewareBuilder struct {
-	paths []string
+	paths  []string
+	jwtHdl myjwt.HandlerJWTInterface
 }
 
-func NewLoginJWTMiddlewareBuilder() *LoginJWTMiddlewareBuilder {
-	return &LoginJWTMiddlewareBuilder{}
+func NewLoginJWTMiddlewareBuilder(jwtHdl myjwt.HandlerJWTInterface) *LoginJWTMiddlewareBuilder {
+	return &LoginJWTMiddlewareBuilder{
+		jwtHdl: jwtHdl,
+	}
 }
 func (lmb *LoginJWTMiddlewareBuilder) DepositPaths(path string) *LoginJWTMiddlewareBuilder {
 	lmb.paths = append(lmb.paths, path)
@@ -27,8 +30,8 @@ func (lmb *LoginJWTMiddlewareBuilder) BuildSess() gin.HandlerFunc {
 			}
 		}
 		//现在用jwt来校验
-		tokenStr := web.ExtractToken(ctx)
-		claims := &web.TokenClaims{}
+		tokenStr := lmb.jwtHdl.ExtractToken(ctx)
+		claims := &myjwt.TokenClaims{}
 		//ParseWithClaims 一定要使用指针， 因为ParseWithClaims会去修改claims里面的值
 		token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
 			return []byte("95osj3fUD7fo0mlYdDbncXz4VD2igvf0"), nil
@@ -47,7 +50,12 @@ func (lmb *LoginJWTMiddlewareBuilder) BuildSess() gin.HandlerFunc {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-		//短token过期了，搞一个新的
+		//如果redis已经崩溃了，就不执行
+		err = lmb.jwtHdl.CheckSession(ctx, claims.Ssid)
+		if err != nil {
+			ctx.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
 
 		//保证token的时效性---使用了长短token，现在用不上
 		//now := time.Now()

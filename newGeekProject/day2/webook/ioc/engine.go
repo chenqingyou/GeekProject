@@ -2,6 +2,7 @@ package ioc
 
 import (
 	"GeekProject/newGeekProject/day2/webook/internal/web"
+	myjwt "GeekProject/newGeekProject/day2/webook/internal/web/ijwt"
 	"GeekProject/newGeekProject/day2/webook/internal/web/middleware"
 	"GeekProject/newGeekProject/day2/webook/pkg/ginx/middlewares/ratelimit"
 	"GeekProject/newGeekProject/day2/webook/pkg/ratelimit_win"
@@ -22,7 +23,7 @@ func InitGin(mdls []gin.HandlerFunc, userHdl *web.UserHandler, wechat *web.OAuth
 	return server
 }
 
-func InitMiddlewares(redisClient redis.Cmdable) []gin.HandlerFunc {
+func InitMiddlewares(redisClient redis.Cmdable, jwtHdl myjwt.HandlerJWTInterface) []gin.HandlerFunc {
 	return []gin.HandlerFunc{
 		//使用限流的中间件
 		ratelimit.NewBuilder(ratelimit_win.NewRedisSlidingWindowLimiter(redisClient, time.Second, 100)).Build(),
@@ -55,7 +56,7 @@ func InitMiddlewares(redisClient redis.Cmdable) []gin.HandlerFunc {
 		//存放sess
 		sessions.Sessions("mysession", memstore.NewStore([]byte("WZmKWNA1rxZf9TCoRBNsNDIlKdHb6DrzwK2NFF9n7a8ueRfinsAWFqVskMalYtgo"),
 			[]byte("lUzWwJAb6zaC1C5lRELHwDRNiYRwIC3nhL80dzBffEy7EsRGnzuOSa8BkqooCZ6W"))),
-		middleware.NewLoginJWTMiddlewareBuilder().DepositPaths(
+		middleware.NewLoginJWTMiddlewareBuilder(jwtHdl).DepositPaths(
 			"/users/signup").
 			DepositPaths("/users/loginJwt").
 			DepositPaths("/users/loginSms/code").

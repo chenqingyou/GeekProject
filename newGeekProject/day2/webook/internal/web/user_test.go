@@ -83,7 +83,7 @@ func TestUserHandler_SignUp(t *testing.T) {
 			server := gin.Default()
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
-			handler := NewUserHandler(tt.mock(ctrl), nil)
+			handler := NewUserHandler(tt.mock(ctrl), nil, nil)
 			handler.RegisterRoutesCt(server)
 			req, err := http.NewRequest(http.MethodPost, "/users/signup", bytes.NewBuffer([]byte(tt.body)))
 			require.NoError(t, err)

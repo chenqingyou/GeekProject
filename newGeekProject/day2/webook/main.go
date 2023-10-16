@@ -2,15 +2,44 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 	"net/http"
 )
 
 func main() {
+	if err := initViperV2(); err != nil {
+		panic(err)
+	}
 	server := InitWebServer()
 	server.GET("/hello", func(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, "你好 你来了")
 	})
 	server.Run(":8080")
+}
+
+func initViperV2() error {
+	viper.SetConfigFile("cofig/dev.yaml")
+	err := viper.ReadInConfig()
+	if err != nil {
+		return err
+	}
+	return err
+}
+
+func initViper() error {
+	//配置文件的名字
+	viper.SetConfigName("dev")
+	//配置文件的类型
+	viper.SetConfigType("yaml")
+	//配置文件目录
+	viper.AddConfigPath("./config")
+	//viper.AddConfigPath("./temp/config")
+	//读取配置到viper里面，或者加载到内存里面
+	err := viper.ReadInConfig()
+	if err != nil {
+		return err
+	}
+	return err
 }
 
 //func initUser(serverDB *gorm.DB, client redis.Cmdable) *web.UserHandler {

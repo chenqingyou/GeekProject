@@ -24,7 +24,7 @@ func setCodeUnlocked(key, val string) {
 		Expiration: time.Now().Add(5 * time.Minute),
 	}
 	cacheCode.Store(key, item)
-	// 设置600秒后过期
+	// 设置60秒后过期
 	go func() {
 		time.Sleep(60 * time.Second)
 		mu.Lock()

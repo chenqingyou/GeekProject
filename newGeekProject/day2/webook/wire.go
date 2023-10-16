@@ -8,6 +8,7 @@ import (
 	"GeekProject/newGeekProject/day2/webook/internal/repository/dao"
 	"GeekProject/newGeekProject/day2/webook/internal/service"
 	"GeekProject/newGeekProject/day2/webook/internal/web"
+	"GeekProject/newGeekProject/day2/webook/internal/web/ijwt"
 	"GeekProject/newGeekProject/day2/webook/ioc"
 	"github.com/gin-gonic/gin"
 	"github.com/google/wire"
@@ -21,6 +22,7 @@ func InitWebServer() *gin.Engine {
 		cache.NewUserCache, cache.NewCodeCache,
 		repository.NewUserRepository, repository.NewCodeRepository,
 		service.NewUserService, service.NewCodeService,
+		ijwt.NewRedisJwtHandler,
 		web.NewUserHandler,
 		web.NewOAuth2WechatHandler,
 		ioc.InitOAuth2WechatService,

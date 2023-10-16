@@ -3,12 +3,14 @@ package web
 import (
 	"GeekProject/newGeekProject/day2/webook/internal/domain"
 	"GeekProject/newGeekProject/day2/webook/internal/service"
+	myjwt "GeekProject/newGeekProject/day2/webook/internal/web/ijwt"
 	"encoding/json"
 	"fmt"
 	regexp "github.com/dlclark/regexp2"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/redis/go-redis/v9"
 	"net/http"
 )
 
@@ -24,20 +26,22 @@ const (
 var _ Handler = (*UserHandler)(nil)
 
 type UserHandler struct {
-	svc         service.UserServiceInterface
-	passWordExp *regexp.Regexp
-	emailExp    *regexp.Regexp
-	codeSvc     service.CodeServiceInterface
-	jwtHandler  //用组合的方式，不使用指针
+	svc                       service.UserServiceInterface
+	passWordExp               *regexp.Regexp
+	emailExp                  *regexp.Regexp
+	codeSvc                   service.CodeServiceInterface
+	myjwt.HandlerJWTInterface               //用组合的方式，不使用指针
+	cmd                       redis.Cmdable //用组合的方式，不使用指针
 }
 
-func NewUserHandler(svc service.UserServiceInterface, codeSvc service.CodeServiceInterface) *UserHandler {
+func NewUserHandler(svc service.UserServiceInterface, codeSvc service.CodeServiceInterface,
+	myjwt myjwt.HandlerJWTInterface) *UserHandler {
 	return &UserHandler{
-		svc:         svc,
-		codeSvc:     codeSvc,
-		passWordExp: regexp.MustCompile(passwordRegexPattern, regexp.None),
-		emailExp:    regexp.MustCompile(emailRegexPattern, regexp.None),
-		jwtHandler:  NewJwtHandler(),
+		svc:                 svc,
+		codeSvc:             codeSvc,
+		passWordExp:         regexp.MustCompile(passwordRegexPattern, regexp.None),
+		emailExp:            regexp.MustCompile(emailRegexPattern, regexp.None),
+		HandlerJWTInterface: myjwt,
 	}
 }
 
@@ -60,7 +64,9 @@ func (u *UserHandler) RegisterRoutesCt(server *gin.Engine) {
 	ug.POST("/signup", u.SignUp)
 	//登录
 	ug.POST("/login", u.Longin)
+	ug.POST("/logout", u.Logout)
 	ug.POST("/loginJwt", u.LonginJwt)
+	ug.POST("/loginOutJwt", u.LonginOutJwt)
 	//修改
 	ug.POST("/edit", u.Edit)
 	//查询
@@ -129,17 +135,27 @@ func (u *UserHandler) SignUp(ctx *gin.Context) {
 //参考登录校验部分，比较User-Agent
 
 func (u *UserHandler) RefreshToken(ctx *gin.Context) {
+
 	//只有这个接口，拿出来的是refresh_token，其他的都是短token
-	refreshToken := ExtractToken(ctx)
-	var rc RefreshClaims
+	refreshToken := u.HandlerJWTInterface.ExtractToken(ctx)
+	var rc myjwt.RefreshClaims
 	token, err := jwt.ParseWithClaims(refreshToken, &rc, func(token *jwt.Token) (interface{}, error) {
-		return u.rtKey, nil
+		return myjwt.RtKey, nil
 	})
 	if err != nil || !token.Valid {
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
-	err = u.SetJWTToken(ctx, rc.Uid)
+	err = u.CheckSession(ctx, rc.Ssid)
+	if err != nil {
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 5,
+			Msg:  "刷新失败",
+			Data: nil,
+		})
+		return
+	}
+	err = u.SetJWTToken(ctx, rc.Uid, rc.Ssid)
 	if err != nil {
 		ctx.AbortWithStatus(http.StatusUnauthorized)
 		return
@@ -215,18 +231,31 @@ func (u *UserHandler) LonginJwt(ctx *gin.Context) {
 		ctx.String(http.StatusInternalServerError, "System error")
 		return
 	}
-	err = u.SetJWTToken(ctx, uLoginMeg.Id)
-	if err != nil {
-		ctx.String(http.StatusInternalServerError, "System error")
-		return
-	}
-	err = u.setRefreshToken(ctx, uLoginMeg.Id)
+	err = u.SetLoginToken(ctx, uLoginMeg.Id)
 	if err != nil {
 		ctx.String(http.StatusInternalServerError, "System error")
 		return
 	}
 	ctx.String(http.StatusOK, "Login successful\n")
 	return
+}
+
+func (u *UserHandler) LonginOutJwt(ctx *gin.Context) {
+	//需要将长短token都设置成一个非法的值
+	err := u.ClearToken(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusOK, domain.Result{
+			Code: 5,
+			Msg:  "退出登录失败",
+			Data: nil,
+		})
+		return
+	}
+	ctx.JSON(http.StatusOK, domain.Result{
+		Code: 0,
+		Msg:  "退出登录成功",
+		Data: nil,
+	})
 }
 
 func (u *UserHandler) Logout(ctx *gin.Context) {
@@ -252,7 +281,7 @@ func (u *UserHandler) Edit(ctx *gin.Context) {
 func (u *UserHandler) ProfileJWT(ctx *gin.Context) {
 	c, _ := ctx.Get("claims")
 	//先判读类型
-	claims, ok := c.(*TokenClaims)
+	claims, ok := c.(*myjwt.TokenClaims)
 	if !ok {
 		ctx.String(http.StatusInternalServerError, "System error")
 		return
@@ -266,7 +295,7 @@ func (u *UserHandler) Profile(ctx *gin.Context) {
 		Email string `json:"email"`
 	}
 	c, _ := ctx.Get("claims")
-	claims, ok := c.(*TokenClaims)
+	claims, ok := c.(*myjwt.TokenClaims)
 	if !ok {
 		ctx.String(http.StatusInternalServerError, "System error")
 		return
@@ -387,16 +416,11 @@ func (u *UserHandler) LoginSMS(ctx *gin.Context) {
 
 	// 这边要怎么办呢？
 	// 从哪来？
-	if err = u.SetJWTToken(ctx, user.Id); err != nil {
+	if err = u.SetLoginToken(ctx, user.Id); err != nil {
 		ctx.JSON(http.StatusOK, domain.Result{
 			Code: 5,
 			Msg:  "系统错误",
 		})
-		return
-	}
-	err = u.setRefreshToken(ctx, user.Id)
-	if err != nil {
-		ctx.String(http.StatusInternalServerError, "System error")
 		return
 	}
 
