@@ -12,7 +12,7 @@ func InitDB() (db *gorm.DB) {
 	type DBConfig struct {
 		Dns string `json:"dns"`
 	}
-	var cfg DBConfig
+	var cfg = DBConfig{Dns: "root:root@tcp(localhost:13316)/webook_debug"} //设置默认值
 	err := viper.UnmarshalKey("db.mysql.dsn", &cfg)
 	if err != nil {
 		panic(err)

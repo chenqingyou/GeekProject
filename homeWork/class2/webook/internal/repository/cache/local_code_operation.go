@@ -36,6 +36,8 @@ func setCodeUnlocked(key, val string) {
 func checkAndSetCode(key, val string) int {
 	mu.Lock()
 	defer mu.Unlock()
+	//因为有过期时间的设置，当这个手机发送了验证码，但是还没有过期的时候，会直接返回发送频繁
+	//s，如果这个验证码过期了，这个Key在本地缓存中会被删除，重新发送
 	ttl, ok := cacheCode.Load(key)
 	if !ok {
 		// key不存在，直接设置
@@ -47,7 +49,7 @@ func checkAndSetCode(key, val string) int {
 	if ttl == "" {
 		return -2
 	}
-	// key存在且未过期，但发送太频繁（在10分钟内）
+	// key存在且未过期，但发送太频繁（在1分钟内）
 	// 返回-1表示发送太频繁
 	return -1
 }

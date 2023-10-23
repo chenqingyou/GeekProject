@@ -1,0 +1,2 @@
+mysql:
+  dns: "root:root@tcp(localhost:13316)/webook"

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"GeekProject/homeWork/class2/webook/config"
 	"GeekProject/homeWork/class2/webook/internal/repository"
 	"GeekProject/homeWork/class2/webook/internal/repository/cache"
 	"GeekProject/homeWork/class2/webook/internal/repository/dao"
@@ -14,6 +13,7 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	"strings"
@@ -21,7 +21,11 @@ import (
 )
 
 func main() {
-	serverDB, err := initDB(config.Config.DB.DNS)
+	if err := initViperConfig(); err != nil {
+		panic(err)
+	}
+
+	serverDB, err := initDB()
 	if err != nil {
 		fmt.Printf("Open DB init err [%v]\n", err)
 		return
@@ -85,9 +89,17 @@ func initUser(serverDB *gorm.DB) *web.UserHandler {
 	return user
 }
 
-func initDB(mysqlStr string) (db *gorm.DB, err error) {
+func initDB() (db *gorm.DB, err error) {
 	//初始化数据库
-	serverDB, err := gorm.Open(mysql.Open(mysqlStr))
+	type DBConfig struct {
+		Dns string `json:"dns"`
+	}
+	var cfg = DBConfig{Dns: "root:root@tcp(localhost:13316)/webook_debug"} //设置默认值
+	err = viper.UnmarshalKey("db.mysql.dsn", &cfg)
+	if err != nil {
+		panic(err)
+	}
+	serverDB, err := gorm.Open(mysql.Open(cfg.Dns))
 	if err != nil {
 		fmt.Printf("Open DB init err [%v]\n", err)
 		return nil, err
@@ -98,4 +110,20 @@ func initDB(mysqlStr string) (db *gorm.DB, err error) {
 		return nil, err
 	}
 	return serverDB, nil
+}
+
+func initViperConfig() error {
+	//配置文件的名字
+	viper.SetConfigName("dev")
+	//配置文件的类型
+	viper.SetConfigType("yaml")
+	//配置文件目录
+	viper.AddConfigPath("./config")
+	//viper.AddConfigPath("./temp/config")
+	//读取配置到viper里面，或者加载到内存里面
+	err := viper.ReadInConfig()
+	if err != nil {
+		return err
+	}
+	return err
 }
